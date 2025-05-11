@@ -4,7 +4,9 @@ import LoginComponent from './components/LoginComponent';
 import RegisterComponent from './components/RegisterComponent';
 import BannerComponent from './components/BannerComponent';
 import SearchComponent from './components/SearchComponent';
-import SidebarComponent from './components/SidebarComponent';
+import ListasComponent from './components/ListasComponent';
+import CercanasComponent from './components/CercanasComponent';
+import UbicacionComponent from './components/UbicacionComponent';
 import ResultsComponent from './components/ResultsComponent';
 import FooterComponent from './components/FooterComponent';
 
@@ -15,6 +17,11 @@ export const Container = ({ children }) => {
 export const Row = ({ children }) => {
   return <div className="row mt-5">{children}</div>;
 };
+
+export const Collg3 = ({ children }) => {
+  return <aside class="col-lg-3">{children}</aside>;
+};
+
 
 
 function App() {
@@ -27,7 +34,11 @@ function App() {
     <Container>
     <SearchComponent />
     <Row>
-    <SidebarComponent />
+    <Collg3>
+    <ListasComponent />
+    <CercanasComponent />
+    <UbicacionComponent />
+    </Collg3>
     <ResultsComponent />
     </Row>
     </Container>
