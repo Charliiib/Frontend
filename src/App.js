@@ -6,6 +6,7 @@ import BannerComponent from './components/BannerComponent';
 import SearchComponent from './components/SearchComponent';
 import SidebarComponent from './components/SidebarComponent';
 import ResultsComponent from './components/ResultsComponent';
+import FooterComponent from './components/FooterComponent';
 
 export const Container = ({ children }) => {
   return <div className="container">{children}</div>;
@@ -30,6 +31,7 @@ function App() {
     <ResultsComponent />
     </Row>
     </Container>
+    <FooterComponent />
     </div>
   );
 }
