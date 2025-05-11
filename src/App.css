@@ -1,38 +1,27 @@
-.App {
-  text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.compra-banner {
+  background-image: url('https://imgs.search.brave.com/epjTEfdS5z4iDZNXRd2dAIosb8wTLX9ZMM4-E8a5o0k/rs:fit:500:0:0:0/g:ce/aHR0cHM6Ly90My5m/dGNkbi5uZXQvanBn/LzA4LzA3LzIwLzcy/LzM2MF9GXzgwNzIw/NzIwNF9qTUJvRkJj/alR0TFVyd1Q2akZa/SEFOSmNjRTNudDhJ/Sy5qcGc');
+  background-size: cover;
+  background-position: center;
+  height: 300px;
+  color: white;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  position: relative;
 }
 
-.App-link {
-  color: #61dafb;
+.compra-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.compra-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
 }
