@@ -3,6 +3,7 @@ import HeaderComponent from './components/HeaderComponent';
 import LoginComponent from './components/LoginComponent';
 import RegisterComponent from './components/RegisterComponent';
 import BannerComponent from './components/BannerComponent';
+import SearchComponent from './components/SearchComponent';
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
     <LoginComponent/>
     <RegisterComponent/>
     <BannerComponent />
+    <SearchComponent />
     </div>
   );
 }
