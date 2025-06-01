@@ -96,15 +96,6 @@ const SearchComponent = ({ onProductSelect }) => {
                       </div>
                     </div>
 
-
-
-
-
-
-
-
-
-
                     <button 
                       onClick={clearSelection}
                       className="btn btn-sm btn-outline-danger"
