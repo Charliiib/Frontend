@@ -12,8 +12,7 @@ const SucursalesComponent = () => {
   
   // Estados para las selecciones
   const [selectedBarrio, setSelectedBarrio] = useState('');
-  const [selectedComercio, setSelectedComercio] = useState('');
-  const [selectedComercioData, setSelectedComercioData] = useState(null); // Datos del comercio seleccionado
+  const [selectedComercios, setSelectedComercios] = useState([]);
   const [selectedSucursal, setSelectedSucursal] = useState('');
 
   // Cargar datos iniciales
@@ -58,44 +57,39 @@ const SucursalesComponent = () => {
         }
       } else {
         setAllSucursalesBarrio([]);
-        setFilteredComercios(allComercios);
+        setFilteredComercios([]);
         setFilteredSucursales([]);
       }
       
-      setSelectedComercio('');
-      setSelectedComercioData(null);
+      setSelectedComercios([]);
       setSelectedSucursal('');
     };
     
     fetchSucursalesPorBarrio();
   }, [selectedBarrio, allComercios]);
 
-  // Cuando se selecciona un comercio
+  // Cuando se seleccionan/deseleccionan comercios
   useEffect(() => {
-    if (selectedComercio) {
-      const [idComercio, idBandera] = selectedComercio.split(',');
-      
-      // Encontrar el comercio seleccionado para obtener sus datos
-      const comercioSeleccionado = allComercios.find(c => 
-        c.idComercio.toString() === idComercio && 
-        c.idBandera.toString() === idBandera
-      );
-      
-      setSelectedComercioData(comercioSeleccionado || null);
-      
-      // Filtrar sucursales
+    if (selectedComercios.length > 0) {
       const sucursalesFiltradas = allSucursalesBarrio.filter(sucursal => 
-        sucursal.idComercio.toString() === idComercio && 
-        sucursal.idBandera.toString() === idBandera
+        selectedComercios.includes(`${sucursal.idComercio},${sucursal.idBandera}`)
       );
-      
       setFilteredSucursales(sucursalesFiltradas);
-      setSelectedSucursal('');
     } else {
-      setSelectedComercioData(null);
       setFilteredSucursales([]);
+      setSelectedSucursal('');
     }
-  }, [selectedComercio, allSucursalesBarrio, allComercios]);
+  }, [selectedComercios, allSucursalesBarrio]);
+
+  const handleComercioSelection = (comercioId) => {
+    setSelectedComercios(prev => {
+      if (prev.includes(comercioId)) {
+        return prev.filter(id => id !== comercioId);
+      } else {
+        return [...prev, comercioId];
+      }
+    });
+  };
 
   // Opciones para los selects
   const barrioOptions = barrios.map(barrio => ({
@@ -103,86 +97,141 @@ const SucursalesComponent = () => {
     label: barrio.barriosNombre
   }));
 
-  const comercioOptions = filteredComercios.map(comercio => ({
-    value: `${comercio.idComercio},${comercio.idBandera}`,
-    label: comercio.comercioBanderaNombre,
-    data: comercio
-  }));
-
   const sucursalOptions = filteredSucursales.map(sucursal => ({
     value: `${sucursal.idComercio},${sucursal.idBandera},${sucursal.idSucursal}`,
     label: sucursal.sucursalesNombre
   }));
 
-  // URL de la imagen del comercio seleccionado
-  const comercioImageUrl = selectedComercioData 
-    ? `https://imagenes.preciosclaros.gob.ar/comercios/${selectedComercioData.idComercio}-${selectedComercioData.idBandera}.jpg`
-    : null;
-
   return (
     <div className="mt-3" style={{ maxWidth: '100%', margin: '0 auto' }}>
-      {/* Primera fila: Barrios y Comercios */}
-      <div className="d-flex mb-3" style={{ gap: '15px' }}>
-        {/* Barrios */}
-        <div style={{ flex: 1 }}>
-          <label className="form-label">Barrios</label>
-          <Select
-            options={barrioOptions}
-            value={barrioOptions.find(opt => opt.value === selectedBarrio)}
-            onChange={(opt) => setSelectedBarrio(opt?.value || '')}
-            placeholder="Seleccione un barrio"
-            isClearable
-            styles={{
-              control: (base) => ({
-                ...base,
-                width: '100%'
-              }),
-              container: (base) => ({
-                ...base,
-                width: '100%'
-              })
-            }}
-          />
-        </div>
-        
-        {/* Comercios */}
-        <div style={{ flex: 1 }}>
-          <label className="form-label">Comercio</label>
-          <Select
-            options={comercioOptions}
-            value={comercioOptions.find(opt => opt.value === selectedComercio)}
-            onChange={(opt) => {
-              setSelectedComercio(opt?.value || '');
-              setSelectedComercioData(opt?.data || null);
-            }}
-            placeholder={selectedBarrio ? 'Seleccione un comercio' : 'Primero seleccione un barrio'}
-            isDisabled={!selectedBarrio}
-            isClearable
-            styles={{
-              control: (base) => ({
-                ...base,
-                width: '100%'
-              }),
-              container: (base) => ({
-                ...base,
-                width: '100%'
-              })
-            }}
-          />
-        </div>
+      {/* Selector de Barrios */}
+      <div className="mb-4">
+        <label className="form-label">Seleccione un barrio</label>
+        <Select
+          options={barrioOptions}
+          value={barrioOptions.find(opt => opt.value === selectedBarrio)}
+          onChange={(opt) => setSelectedBarrio(opt?.value || '')}
+          placeholder="Seleccione un barrio"
+          isClearable
+          styles={{
+            control: (base) => ({
+              ...base,
+              width: '100%'
+            }),
+            container: (base) => ({
+              ...base,
+              width: '100%'
+            })
+          }}
+        />
       </div>
+      
+      {/* Comercios (solo visibles cuando hay un barrio seleccionado) */}
+      {selectedBarrio && (
+        <div className="mb-4">
+          <label className="form-label">Comercios en {barrioOptions.find(b => b.value === selectedBarrio)?.label}</label>
+          <div 
+            className="d-flex flex-wrap justify-content-center gap-4 mt-4"
+          >
+            {filteredComercios.length > 0 ? (
+              filteredComercios.map(comercio => {
+                const imageUrl = `https://imagenes.preciosclaros.gob.ar/comercios/${comercio.idComercio}-${comercio.idBandera}.jpg`;
+                const isSelected = selectedComercios.includes(`${comercio.idComercio},${comercio.idBandera}`);
+                
+                return (
+                  <div 
+                    key={`${comercio.idComercio}-${comercio.idBandera}`}
+                    className={`d-flex flex-column align-items-center ${isSelected ? 'selected-comercio' : ''}`}
+                    style={{
+                      width: '140px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onClick={() => handleComercioSelection(`${comercio.idComercio},${comercio.idBandera}`)}
+                  >
+                    {/* Contenedor de la imagen */}
+                    <div
+                      className="position-relative"
+                      style={{
+                        width: '120px',
+                        height: '120px',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        border: isSelected ? '3px solid #0d6efd' : '1px solid #dee2e6',
+                        boxShadow: isSelected ? '0 0 10px rgba(13, 110, 253, 0.5)' : 'none',
+                        marginBottom: '8px'
+                      }}
+                    >
+                      <img 
+                        src={imageUrl} 
+                        alt={comercio.comercioBanderaNombre}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover'
+                        }}
+                        onError={(e) => {
+                          e.target.src = 'https://via.placeholder.com/150?text=No+Image';
+                        }}
+                      />
+                      {/* Checkbox circular */}
+                      <div 
+                        className="position-absolute top-0 end-0 m-1 bg-white rounded-circle"
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: '1px solid #ddd'
+                        }}
+                      >
+                        {isSelected && (
+                          <div 
+                            className="bg-primary rounded-circle"
+                            style={{
+                              width: '16px',
+                              height: '16px'
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Nombre del comercio - ahora fuera del contenedor de la imagen */}
+                    <div 
+                      className="text-center mt-2"
+                      style={{
+                        width: '100%',
+                        fontSize: '0.85rem',
+                        fontWeight: '500',
+                        color: isSelected ? '#0d6efd' : '#495057',
+                        wordBreak: 'break-word'
+                      }}
+                    >
+                      {comercio.comercioBanderaNombre}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-muted py-4">
+                No hay comercios disponibles en este barrio
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
-      {/* Segunda fila: Sucursales e Imagen */}
-      <div className="d-flex" style={{ gap: '15px' }}>
-        {/* Sucursales */}
-        <div style={{ flex: 1 }}>
-          <label className="form-label mt-4">Sucursal</label>
+      {/* Sucursales */}
+      {selectedComercios.length > 0 && (
+        <div className="mb-3 mt-4">
+          <label className="form-label">Sucursales disponibles</label>
           <Select
             options={sucursalOptions}
             value={sucursalOptions.find(opt => opt.value === selectedSucursal)}
             onChange={(opt) => setSelectedSucursal(opt?.value || '')}
-            placeholder={selectedComercio ? 'Seleccione una sucursal' : 'Primero seleccione un comercio'}
-            isDisabled={!selectedComercio}
+            placeholder="Seleccione una sucursal"
             isClearable
             styles={{
               control: (base) => ({
@@ -196,51 +245,7 @@ const SucursalesComponent = () => {
             }}
           />
         </div>
-        
-        {/* Imagen del Comercio */}
-        <div style={{ 
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          border: 'none',
-          
-          minHeight: '72px' // Altura aproximada del select
-        }}>
-          {selectedComercioData ? (
-            <div 
-              className="text-center p-2"
-              style={{
-                transition: 'transform 0.3s ease',
-                cursor: 'pointer'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-            >
-              <img 
-                src={comercioImageUrl} 
-                alt={`Logo de ${selectedComercioData.comercioBanderaNombre}`}
-                style={{
-                  maxHeight: '100px',
-                  maxWidth: '100%',
-                  objectFit: 'contain'
-                }}
-                onError={(e) => {
-                  e.target.src = 'https://via.placeholder.com/150?text=No+Image';
-                }}
-              />
-              <p className="mt-2 mb-0 small text-muted">
-                {selectedComercioData.comercioBanderaNombre}
-              </p>
-            </div>
-          ) : (
-            <div className="text-muted small text-center p-3">
-           
-            </div>
-          )}
-        </div>
-      </div>
+      )}
     </div>
   );
 };

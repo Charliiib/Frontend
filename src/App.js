@@ -68,7 +68,7 @@ function App() {
     <Collg3>
     <ListasComponent />
     <CercanasComponent />
-
+    <UbicacionComponent />
     </Collg3>
     <ResultsComponent />
     </Row>
