@@ -58,7 +58,7 @@ export const ResultsComponent = ({
   const [sucursales, setSucursales] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [sortMethod, setSortMethod] = useState("default");
+  const [sortMethod, setSortMethod] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -223,7 +223,7 @@ export const ResultsComponent = ({
 const COLORS = {
   comercio: '#6f42c1', // Púrpura
   precio: '#28a745',   // Verde
-  distancia: '#fd7e14' // Naranja
+  distancia: '#007bff' // Naranja
 };
 
 // Componente TooltipWrapper para simplificar

@@ -98,6 +98,12 @@ select:disabled {
   justify-content: space-between !important;
 }
 
-.dropdown-toggle.btn::after {
+.dropdown-toggle::after {
   margin-left: 0.5em;
+  vertical-align: middle;
+}
+
+.dropdown-toggle {
+  min-width: 150px;
+  justify-content: space-between;
 }
