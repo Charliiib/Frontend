@@ -14,7 +14,7 @@ L.Icon.Default.mergeOptions({
 
 const UbicacionComponent = ({ onLocationChange }) => {
   const [location, setLocation] = useState({
-    address: "Av. Corrientes 1234, CABA",
+    address: "Habilite la ubicación para calcular la distancia",
     coords: null,
     loading: false,
     error: null

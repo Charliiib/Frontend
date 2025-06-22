@@ -80,14 +80,15 @@ function App() {
 
     <Row>
     <Collg3>
-    <ListasComponent />
-    <CercanasComponent />
-            <UbicacionComponent 
+                <UbicacionComponent 
               onLocationChange={(coords) => {
                 console.log("Nueva ubicación recibida:", coords);
                 setUserLocation(coords);
               }} 
             />
+    <ListasComponent />
+    <CercanasComponent />
+
     </Collg3>
           <ResultsComponent 
             selectedProduct={selectedProduct}

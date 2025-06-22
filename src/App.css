@@ -91,3 +91,13 @@ select:disabled {
   transform: translateY(-5px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
+
+.dropdown-toggle.btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.dropdown-toggle.btn::after {
+  margin-left: 0.5em;
+}
