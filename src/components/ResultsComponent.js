@@ -1,9 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { Dropdown, Spinner, Alert, Card, Row, Col } from 'react-bootstrap';
 import axios from 'axios';
-import { FaMapMarkerAlt, FaMap, FaStore, FaBuilding } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaMap, FaStore, FaBuilding, FaWalking  } from 'react-icons/fa';
 
-export const ResultsComponent = ({ selectedProduct, selectedSucursales }) => {
+
+
+// Función para calcular la distancia entre dos coordenadas (Haversine formula)
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+  
+  const R = 6371; // Radio de la Tierra en km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
+
+const formatDistance = (distance) => {
+  if (distance === null) return 'Distancia no disponible';
+  if (distance < 1) return `${Math.round(distance * 1000)} m`;
+  return `${distance.toFixed(1)} km`;
+};
+
+export const ResultsComponent = ({ selectedProduct, selectedSucursales, userLocation  }) => {
   const [sucursales, setSucursales] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -213,23 +236,36 @@ export const ResultsComponent = ({ selectedProduct, selectedSucursales }) => {
                           <small className="text-muted text-truncate"><FaBuilding className="me-1" /> {sucursal.sucursalesNombre}</small>
                         </div>
                       </div>
+  <div className="mb-3">
+              <div className="d-flex align-items-center text-muted small mb-2">
+                <FaMapMarkerAlt className="me-2" />
+                {sucursal.sucursalesLocalidad}
+              </div>
+              {sucursal.sucursalesLatitud && sucursal.sucursalesLongitud && (
+                <>
+                  <div
+                    className="d-flex align-items-center text-primary small"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => openGoogleMaps(sucursal.sucursalesLatitud, sucursal.sucursalesLongitud)}
+                  >
+                    <FaMap className="me-2" />
+                    Ver en el mapa
+                  </div>
+{userLocation && (
+  <div className="d-flex align-items-center text-muted small mt-2">
+    <FaWalking className="me-2" />
+    {formatDistance(calculateDistance(
+      userLocation.lat,
+      userLocation.lng,
+      sucursal.sucursalesLatitud,
+      sucursal.sucursalesLongitud
+    ))} de distancia
+  </div>
+)}
+                </>
+              )}
+            </div>
 
-                      <div className="mb-3">
-                        <div className="d-flex align-items-center text-muted small mb-2">
-                          <FaMapMarkerAlt className="me-2" />
-                          {sucursal.sucursalesLocalidad}
-                        </div>
-                        {sucursal.sucursalesLatitud && sucursal.sucursalesLongitud && (
-                          <div
-                            className="d-flex align-items-center text-primary small"
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => openGoogleMaps(sucursal.sucursalesLatitud, sucursal.sucursalesLongitud)}
-                          >
-                            <FaMap className="me-2" />
-                            Ver en el mapa
-                          </div>
-                        )}
-                      </div>
 
                       {/* Imagen del producto entre mapa y precio */}
                       {selectedProduct && (

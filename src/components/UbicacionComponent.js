@@ -12,7 +12,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const UbicacionComponent = () => {
+const UbicacionComponent = ({ onLocationChange }) => {
   const [location, setLocation] = useState({
     address: "Av. Corrientes 1234, CABA",
     coords: null,
@@ -49,11 +49,9 @@ const UbicacionComponent = () => {
       let latitude, longitude;
       
       if (coords) {
-        // Usar coordenadas del mapa
         latitude = coords.lat;
         longitude = coords.lng;
       } else {
-        // Obtener ubicación automática
         const position = await new Promise((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject, {
             enableHighAccuracy: true,
@@ -67,14 +65,20 @@ const UbicacionComponent = () => {
 
       const address = await getAddressFromCoords(latitude, longitude);
 
-      setLocation({
+      const newLocation = {
         address: address || "Ubicación no identificada",
         coords: { lat: latitude, lng: longitude },
         loading: false,
         error: null
-      });
+      };
       
+      setLocation(newLocation);
       setShowMapModal(false);
+      
+      // Notificar al componente padre sobre el cambio de ubicación
+      if (onLocationChange) {
+        onLocationChange(newLocation.coords);
+      }
     } catch (error) {
       setLocation({
         ...location,

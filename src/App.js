@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css';
 import HeaderComponent from './components/HeaderComponent';
 import LoginComponent from './components/LoginComponent';
@@ -47,6 +47,11 @@ export const SearchForm = ({ children }) => {
 function App() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedSucursales, setSelectedSucursales] = useState([]);
+  const [userLocation, setUserLocation] = useState(null);
+
+    useEffect(() => {
+    console.log("Ubicación del usuario actualizada:", userLocation);
+  }, [userLocation]);
 
   return (
     
@@ -77,11 +82,17 @@ function App() {
     <Collg3>
     <ListasComponent />
     <CercanasComponent />
-    <UbicacionComponent />
+            <UbicacionComponent 
+              onLocationChange={(coords) => {
+                console.log("Nueva ubicación recibida:", coords);
+                setUserLocation(coords);
+              }} 
+            />
     </Collg3>
           <ResultsComponent 
             selectedProduct={selectedProduct}
             selectedSucursales={selectedSucursales}
+            userLocation={userLocation}
           />
     </Row>
     </Container>
