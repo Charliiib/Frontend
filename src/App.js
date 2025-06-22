@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import './App.css';
 import HeaderComponent from './components/HeaderComponent';
 import LoginComponent from './components/LoginComponent';
@@ -44,7 +45,11 @@ export const SearchForm = ({ children }) => {
 };
 
 function App() {
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedSucursales, setSelectedSucursales] = useState([]);
+
   return (
+    
     <div>
     <HeaderComponent />
     <LoginComponent/>
@@ -55,10 +60,14 @@ function App() {
       <Coll12>
         <CardSearch>
           <CardBody>  
-            <SearchForm>
-              <SucursalComponent/>
-              <SearchComponent />
-            </SearchForm>
+                <SearchForm>
+                  <SearchComponent 
+                    onProductSelect={setSelectedProduct} 
+                  />
+                  <SucursalComponent 
+                    onSucursalesChange={setSelectedSucursales} 
+                  />
+                </SearchForm>
           </CardBody>
         </CardSearch>
       </Coll12>
@@ -70,7 +79,10 @@ function App() {
     <CercanasComponent />
     <UbicacionComponent />
     </Collg3>
-    <ResultsComponent />
+          <ResultsComponent 
+            selectedProduct={selectedProduct}
+            selectedSucursales={selectedSucursales}
+          />
     </Row>
     </Container>
     <FooterComponent />

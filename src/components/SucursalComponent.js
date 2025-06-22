@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Select from 'react-select';
 
-const SucursalesComponent = () => {
+const SucursalesComponent = ({ onSucursalesChange }) => {
   // Estados para los datos
   const [barrios, setBarrios] = useState([]);
   const [allComercios, setAllComercios] = useState([]);
@@ -102,6 +102,14 @@ const SucursalesComponent = () => {
     label: sucursal.sucursalesNombre
   }));
 
+useEffect(() => {
+  if (filteredSucursales.length > 0 && onSucursalesChange) {
+    onSucursalesChange(filteredSucursales);
+  } else {
+    onSucursalesChange([]);
+  }
+}, [filteredSucursales, onSucursalesChange]);
+  
   return (
     <div className="mt-3" style={{ maxWidth: '100%', margin: '0 auto' }}>
       {/* Selector de Barrios */}
@@ -220,30 +228,6 @@ const SucursalesComponent = () => {
               </div>
             )}
           </div>
-        </div>
-      )}
-
-      {/* Sucursales */}
-      {selectedComercios.length > 0 && (
-        <div className="mb-3 mt-4">
-          <label className="form-label">Sucursales disponibles</label>
-          <Select
-            options={sucursalOptions}
-            value={sucursalOptions.find(opt => opt.value === selectedSucursal)}
-            onChange={(opt) => setSelectedSucursal(opt?.value || '')}
-            placeholder="Seleccione una sucursal"
-            isClearable
-            styles={{
-              control: (base) => ({
-                ...base,
-                width: '100%'
-              }),
-              container: (base) => ({
-                ...base,
-                width: '100%'
-              })
-            }}
-          />
         </div>
       )}
     </div>
