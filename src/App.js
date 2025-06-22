@@ -87,7 +87,7 @@ function App() {
               }} 
             />
     <ListasComponent />
-    <CercanasComponent />
+<CercanasComponent userLocation={userLocation} />
 
     </Collg3>
           <ResultsComponent 
