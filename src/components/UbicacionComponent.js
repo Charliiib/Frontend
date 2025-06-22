@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, Button, Modal } from 'react-bootstrap';
+import { Alert, Button, Modal, Badge } from 'react-bootstrap';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
 
 // Fix para los iconos de Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -12,9 +13,9 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const UbicacionComponent = ({ onLocationChange }) => {
+const UbicacionComponent = ({ onLocationChange, selectedBarrio }) => {
   const [location, setLocation] = useState({
-    address: "Habilite la ubicación para calcular la distancia",
+    address: selectedBarrio ? `Barrio seleccionado` : "Habilite la ubicación para calcular la distancia",
     coords: null,
     loading: false,
     error: null
@@ -24,12 +25,14 @@ const UbicacionComponent = ({ onLocationChange }) => {
   const [mapCoords, setMapCoords] = useState(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowLocationRequest(true);
-    }, 1000);
-    
-    return () => clearTimeout(timer);
-  }, []);
+    if (!selectedBarrio) {
+      const timer = setTimeout(() => {
+        setShowLocationRequest(true);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [selectedBarrio]);
 
   // Componente para manejar clics en el mapa
   function MapClickHandler() {

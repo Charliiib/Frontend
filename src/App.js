@@ -80,13 +80,14 @@ function App() {
 
     <Row>
     <Collg3>
+        <ListasComponent />
                 <UbicacionComponent 
               onLocationChange={(coords) => {
                 console.log("Nueva ubicación recibida:", coords);
                 setUserLocation(coords);
               }} 
             />
-    <ListasComponent />
+
 <CercanasComponent userLocation={userLocation} />
 
     </Collg3>
@@ -97,7 +98,7 @@ function App() {
           />
     </Row>
     </Container>
-    <FooterComponent />
+    <FooterComponent />a
     </div>
   );
 }
