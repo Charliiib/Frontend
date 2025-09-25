@@ -56,24 +56,44 @@ function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
 
-  useEffect(() => {
+useEffect(() => {
     const token = localStorage.getItem('token');
-    const user = localStorage.getItem('user');
+    const userString = localStorage.getItem('user');
     
-    if (token && user) {
-      setCurrentUser(JSON.parse(user));
+    if (token && userString) {
+        try {
+            const user = JSON.parse(userString);
+            console.log('Usuario cargado de localStorage:', user);
+            
+            // Asegurarnos de que el usuario tenga la estructura correcta
+            if (user.idUsuario) {
+                setCurrentUser(user);
+            } else {
+                console.warn('Usuario en localStorage no tiene idUsuario');
+                localStorage.removeItem('user');
+                localStorage.removeItem('token');
+            }
+        } catch (error) {
+            console.error('Error parseando usuario de localStorage:', error);
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+        }
     }
-  }, []);
+}, []);
 
-  const handleLoginSuccess = (user) => {
+const handleLoginSuccess = (user) => {
+    console.log('Usuario recibido en login:', user);
     setCurrentUser(user);
+    localStorage.setItem('user', JSON.stringify(user));
     setShowLogin(false);
-  };
+};
 
-  const handleRegisterSuccess = (user) => {
+const handleRegisterSuccess = (user) => {
+    console.log('Usuario recibido en registro:', user);
     setCurrentUser(user);
+    localStorage.setItem('user', JSON.stringify(user));
     setShowRegister(false);
-  };
+};
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -125,9 +145,10 @@ function App() {
             <CardSearch>
               <CardBody>  
                 <SearchForm>
-                  <SearchComponent 
-                    onProductSelect={setSelectedProduct} 
-                  />
+                <SearchComponent 
+                  onProductSelect={setSelectedProduct} 
+                  currentUser={currentUser}
+                />
                   <SucursalComponent 
                     onSucursalesChange={setSelectedSucursales} 
                   />
@@ -139,7 +160,7 @@ function App() {
 
         <Row>
           <Collg3>
-            <ListasComponent />
+<ListasComponent currentUser={currentUser} />
             <UbicacionComponent 
               onLocationChange={(coords) => {
                 console.log("Nueva ubicación recibida:", coords);

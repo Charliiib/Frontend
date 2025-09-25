@@ -142,3 +142,82 @@ body.modal-open {
   animation: none;
   transform: scale(1.1);
 }
+
+/* Estilos para las imágenes de productos */
+.producto-imagen {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+}
+
+/* Mejoras visuales para las tarjetas de productos */
+.productos-lista .card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.productos-lista .card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+/* Ajustes para el botón de eliminar */
+.productos-lista .btn-outline-danger {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Mejor alineación del contenido */
+.productos-lista .card-body {
+    padding: 0.75rem;
+}
+
+/* Efecto hover en las listas */
+.clickable:hover {
+    background-color: #f8f9fa;
+    transition: background-color 0.2s;
+}
+
+/* Scroll suave */
+.sidebar-section {
+    max-height: 70vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.sidebar-section::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-section::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.sidebar-section::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+/* Estilos para el componente de búsqueda */
+.selected-product .card {
+  border: 2px solid #007bff;
+  box-shadow: 0 2px 8px rgba(0,123,255,0.2);
+}
+
+.list-group-item:hover {
+  background-color: #f8f9fa;
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+}
+
+.product-img {
+  border: 1px solid #dee2e6;
+}
+
+.btn-outline-primary:hover {
+  transform: scale(1.05);
+  transition: transform 0.2s ease;
+}

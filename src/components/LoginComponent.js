@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import api from '../api'; // Importa la instancia de api
+import axios from 'axios';
 
 export const LoginComponent = ({ onLoginSuccess, onClose }) => {
   const [email, setEmail] = useState('');
@@ -10,25 +10,48 @@ export const LoginComponent = ({ onLoginSuccess, onClose }) => {
     e.preventDefault();
     setError('');
     try {
-      const response = await api.post('/auth/login', {
+      console.log('Intentando login con:', { email, password });
+      
+      const response = await axios.post('http://localhost:8080/api/auth/login', {
         email: email,
         password: password
       });
       
-      if (response.data.token && response.data.user) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        onLoginSuccess(response.data.user);
-        onClose(); // Cierra el modal
+      console.log('✅ Respuesta del servidor:', response.data);
+      
+      const token = response.data.token;
+      const userFromBackend = response.data.user;
+      
+      console.log('👤 Usuario del backend:', userFromBackend);
+      
+      // ADAPTAR la estructura del usuario para que coincida con lo que espera el frontend
+      const adaptedUser = {
+        idUsuario: userFromBackend.id, // ← Convertir 'id' a 'idUsuario'
+        nombreUsuario: userFromBackend.nombre, // ← 'nombre' a 'nombreUsuario'
+        apellidoUsuario: userFromBackend.apellido, // ← 'apellido' a 'apellidoUsuario'
+        emailUsuario: userFromBackend.email // ← 'email' a 'emailUsuario'
+      };
+      
+      console.log('👤 Usuario adaptado:', adaptedUser);
+      
+      if (token && adaptedUser.idUsuario) {
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(adaptedUser));
+        
+        console.log('💾 Guardado en localStorage - token:', localStorage.getItem('token'));
+        console.log('💾 Guardado en localStorage - user:', localStorage.getItem('user'));
+        
+        onLoginSuccess(adaptedUser);
+        onClose();
       } else {
         throw new Error('Formato de respuesta incorrecto');
       }
     } catch (err) {
+      console.error('❌ Error completo:', err);
       setError(
         err.response?.data?.message || 
         'Error al iniciar sesión. Verifica tus credenciales.'
       );
-      console.error('Login error:', err);
     }
   };
 
@@ -67,9 +90,6 @@ export const LoginComponent = ({ onLoginSuccess, onClose }) => {
                 <button type="submit" className="btn btn-primary">Ingresar</button>
               </div>
             </form>
-          </div>
-          <div className="modal-footer justify-content-center">
-            <span>¿No tienes cuenta? <button className="btn btn-link p-0" onClick={() => { onClose(); /* Lógica para mostrar registro */ }}>Regístrate</button></span>
           </div>
         </div>
       </div>
