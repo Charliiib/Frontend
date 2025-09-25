@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import Select from 'react-select';
+import api from '../api';
 
 const SucursalesComponent = ({ onSucursalesChange }) => {
   // Estados para los datos
@@ -19,11 +19,10 @@ const SucursalesComponent = ({ onSucursalesChange }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [barriosResponse, comerciosResponse] = await Promise.all([
-          axios.get('http://localhost:8080/api/barrios'),
-          axios.get('http://localhost:8080/api/comercios')
-        ]);
-        
+          const [barriosResponse, comerciosResponse] = await Promise.all([
+            api.get('/barrios'),
+            api.get('/comercios')
+          ]);
         setBarrios(barriosResponse.data);
         setAllComercios(comerciosResponse.data);
       } catch (error) {
@@ -39,7 +38,7 @@ const SucursalesComponent = ({ onSucursalesChange }) => {
     const fetchSucursalesPorBarrio = async () => {
       if (selectedBarrio) {
         try {
-          const response = await axios.get(`http://localhost:8080/api/sucursales/por-barrio/${selectedBarrio}`);
+          const response = await api.get(`/sucursales/por-barrio/${selectedBarrio}`);
           setAllSucursalesBarrio(response.data);
           
           const comerciosEnBarrio = [...new Set(

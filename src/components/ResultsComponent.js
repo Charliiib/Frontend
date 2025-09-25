@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Dropdown, Spinner, Alert, Card, Row, Col, Tooltip, OverlayTrigger   } from "react-bootstrap";
-import axios from "axios";
+import api from '../api';
 import { 
   FaStore, 
   FaDollarSign, 
@@ -105,10 +105,9 @@ export const ResultsComponent = ({
           prev.map((s) => ({ ...s, precioLoading: true }))
         );
 
-        const promises = sucursalesData.map((sucursal) =>
-          axios
-            .get(`http://localhost:8080/api/productos/precios`, {
-              params: {
+const promises = sucursalesData.map((sucursal) =>
+  api.get(`/productos/precios`, {
+    params: {
                 id_producto: selectedProduct.idProducto,
                 id_comercio: sucursal.idComercio,
                 id_bandera: sucursal.idBandera,

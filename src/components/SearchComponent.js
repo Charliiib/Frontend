@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api';
 
 const SearchComponent = ({ onProductSelect }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -7,6 +7,7 @@ const SearchComponent = ({ onProductSelect }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  
 
   // Función para limpiar la selección
   const clearSelection = () => {
@@ -29,7 +30,7 @@ const SearchComponent = ({ onProductSelect }) => {
       setError(null);
 
       try {
-        const response = await axios.get('http://localhost:8080/api/productos/buscar', {
+        const response = await api.get('/productos/buscar', {
           params: { 
             termino: searchTerm,
             limit: 15
@@ -39,7 +40,7 @@ const SearchComponent = ({ onProductSelect }) => {
 
         setResults(response.data);
       } catch (err) {
-        if (!axios.isCancel(err)) {
+        if (!api.isCancel(err)) {
           setError('Error al buscar productos');
           console.error('Error:', err);
         }
@@ -143,7 +144,7 @@ const SearchComponent = ({ onProductSelect }) => {
                             className="product-img rounded"
                             alt={`Producto ${producto.nombre || producto.idProducto}`}
                             style={{maxHeight: '150px', objectFit: 'cover'}}
-                            onError={(e) => e.target.src = 'https://imgs.search.brave.com/5tfvD1JAMAiur92B3F3QdOz-w0KzEIIeMUcg1UFrK88/rs:fit:500:0:0:0/g:ce/aHR0cHM6Ly9zdGF0/aWMudmVjdGVlenku/Y29tL3N5c3RlbS9y/ZXNvdXJjZXMvcHJl/dmlld3MvMDA1Lzcy/MC80MDgvbm9uXzJ4/L2Nyb3NzZWQtaW1h/Z2UtaWNvbi1waWN0/dXJlLW5vdC1hdmFp/bGFibGUtZGVsZXRl/LXBpY3R1cmUtc3lt/Ym9sLWZyZWUtdmVj/dG9yLmpwZw'}
+                            onError={(e) => e.target.src = 'https://static.vecteezy.com/system/resources/previews/010/302/093/non_2x/oops-web-error-line-icon-illustration-vector.jpg'}
                           />
                         </div>
                         

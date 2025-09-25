@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Spinner } from 'react-bootstrap';
 import { FaMapMarkerAlt, FaExternalLinkAlt, FaArrowRight } from 'react-icons/fa';
+import api from '../api';
 
 export const CercanasComponent = ({ userLocation }) => {
   const [sucursalesCercanas, setSucursalesCercanas] = useState([]);
@@ -16,7 +16,7 @@ export const CercanasComponent = ({ userLocation }) => {
       setError(null);
 
       try {
-        const response = await axios.get('http://localhost:8080/api/sucursales/cercanas', {
+        const response = await api.get('/sucursales/cercanas', {
           params: {
             lat: userLocation.lat,
             lng: userLocation.lng,

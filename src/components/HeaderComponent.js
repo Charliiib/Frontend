@@ -1,28 +1,39 @@
+import React from 'react';
+import LoginMessage from './LoginMessage';
 
-
-export const HeaderComponent = () => {
-
-
-    return (
-      <header class="py-3">
-      <div class="container">
-          <div class="d-flex justify-content-between align-items-center">
-              <div class="logo">
-                <img src="/compararlogo.png" alt="comparar logo" />
-              </div>
-              
-              <div>
-                  <button class="btn btn-outline-primary me-2 modal-trigger" data-bs-toggle="modal" data-bs-target="#loginModal">
-                      Ingresar
-                  </button>
-                  <button class="btn btn-primary modal-trigger" data-bs-toggle="modal" data-bs-target="#registerModal">
-                      Registrarse
-                  </button>
-              </div>
+const HeaderComponent = ({ currentUser, onLogout, onShowLogin, onShowRegister }) => {
+  return (
+    <header className="py-3">
+      <div className="container">
+        <div className="d-flex justify-content-between align-items-center">
+          <div className="logo">
+            <img src="/compararlogo.png" alt="comparar logo" />
           </div>
+          
+          <div>
+            {currentUser ? (
+              <LoginMessage currentUser={currentUser} onLogout={onLogout} />
+            ) : (
+              <>
+                <button 
+                  className="btn btn-outline-primary me-2" 
+                  onClick={onShowLogin}
+                >
+                  Ingresar
+                </button>
+                <button 
+                  className="btn btn-primary" 
+                  onClick={onShowRegister}
+                >
+                  Registrarse
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       </div>
-  </header>
-    )
-}
+    </header>
+  );
+};
 
 export default HeaderComponent;

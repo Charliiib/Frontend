@@ -1,38 +1,80 @@
-import React from 'react'
+import React, { useState } from 'react';
+import api from '../api'; // Importa la instancia de api
 
+export const LoginComponent = ({ onLoginSuccess, onClose }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
-export const LoginComponent = () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    try {
+      const response = await api.post('/auth/login', {
+        email: email,
+        password: password
+      });
+      
+      if (response.data.token && response.data.user) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        onLoginSuccess(response.data.user);
+        onClose(); // Cierra el modal
+      } else {
+        throw new Error('Formato de respuesta incorrecto');
+      }
+    } catch (err) {
+      setError(
+        err.response?.data?.message || 
+        'Error al iniciar sesión. Verifica tus credenciales.'
+      );
+      console.error('Login error:', err);
+    }
+  };
+
   return (
-    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header" >
-                <h5 class="modal-title" data-bs-toggle="modal" data-bs-target="#myModal">Iniciar sesión</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="loginForm">
-                    <div class="mb-3">
-                        <label for="email_usuario" class="form-label">Email</label>
-                        <input type="email" class="form-control" id="email_usuario" required/>
-                    </div>
-                    <div class="mb-3">
-                        <label for="pass_usuario" class="form-label">Contraseña</label>
-                        <input type="password" class="form-control" id="pass_usuario" required/>
-                    </div>
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">Ingresar</button>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer justify-content-center">
-                <span>¿No tienes cuenta? <a href="#" class="text-primary" data-bs-toggle="modal" data-bs-target="#registerModal" data-bs-dismiss="modal">Regístrate</a></span>
-            </div>
+    <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <div className="modal-dialog">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title">Iniciar sesión</h5>
+            <button type="button" className="btn-close" onClick={onClose}></button>
+          </div>
+          <div className="modal-body">
+            {error && <div className="alert alert-danger">{error}</div>}
+            <form onSubmit={handleSubmit}>
+              <div className="mb-3">
+                <label className="form-label">Email</label>
+                <input 
+                  type="email" 
+                  className="form-control" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="mb-3">
+                <label className="form-label">Contraseña</label>
+                <input 
+                  type="password" 
+                  className="form-control" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="d-grid">
+                <button type="submit" className="btn btn-primary">Ingresar</button>
+              </div>
+            </form>
+          </div>
+          <div className="modal-footer justify-content-center">
+            <span>¿No tienes cuenta? <button className="btn btn-link p-0" onClick={() => { onClose(); /* Lógica para mostrar registro */ }}>Regístrate</button></span>
+          </div>
         </div>
+      </div>
     </div>
-</div>
-
-  )
-}
+  );
+};
 
 export default LoginComponent;

@@ -108,3 +108,37 @@ select:disabled {
   justify-content: space-between;
 }
 
+.modal-backdrop.fade.show {
+  display: none !important;
+}
+
+body.modal-open {
+  overflow: auto !important;
+  padding-right: 0 !important;
+}
+
+/* Estilos para el chatbot */
+.modal-dialog-bottom-right {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  margin: 0;
+  max-width: 350px;
+}
+
+/* Animación para el botón del chatbot */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.bg-primary.rounded-circle {
+  animation: pulse 2s infinite;
+  transition: all 0.3s ease;
+}
+
+.bg-primary.rounded-circle:hover {
+  animation: none;
+  transform: scale(1.1);
+}
