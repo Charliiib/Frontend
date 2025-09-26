@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Dropdown, Spinner, Alert, Card, Row, Col, Tooltip, OverlayTrigger   } from "react-bootstrap";
+import { Dropdown, Spinner, Alert, Card, Row, Col, Tooltip, OverlayTrigger, Button } from "react-bootstrap";
 import api from '../api';
 import { 
   FaStore, 
@@ -13,7 +13,9 @@ import {
   FaArrowUp,
   FaBuilding,
   FaMap,
-  FaWalking
+  FaWalking,
+  FaStar,
+  FaRegStar
 } from 'react-icons/fa';
 
 // Función para calcular la distancia entre dos coordenadas (Haversine formula)
@@ -54,11 +56,103 @@ export const ResultsComponent = ({
   selectedProduct,
   selectedSucursales,
   userLocation,
+  currentUser 
 }) => {
   const [sucursales, setSucursales] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [sortMethod, setSortMethod] = useState(null);
+  const [favoritas, setFavoritas] = useState([]);
+
+  useEffect(() => {
+    const cargarFavoritas = async () => {
+      if (currentUser) {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`http://localhost:8080/api/sucursales-favoritas/usuario/${currentUser.idUsuario}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setFavoritas(data.map(fav => `${fav.idComercio}-${fav.idBandera}-${fav.idSucursal}`));
+          }
+        } catch (error) {
+          console.error('Error cargando sucursales favoritas:', error);
+        }
+      }
+    };
+
+    cargarFavoritas();
+  }, [currentUser]);
+
+
+   // Función para manejar favoritos
+ const toggleFavorita = async (sucursal) => {
+    if (!currentUser) {
+        alert('Debe iniciar sesión para agregar sucursales a favoritos');
+        return;
+    }
+
+    const sucursalKey = `${sucursal.idComercio}-${sucursal.idBandera}-${sucursal.idSucursal}`;
+    const esFavorita = favoritas.includes(sucursalKey);
+
+    try {
+        const token = localStorage.getItem('token');
+        
+        if (esFavorita) {
+            // Eliminar de favoritos
+            const response = await fetch(`http://localhost:8080/api/sucursales-favoritas/eliminar`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    idUsuario: currentUser.idUsuario,
+                    idComercio: sucursal.idComercio,
+                    idBandera: sucursal.idBandera,
+                    idSucursal: sucursal.idSucursal
+                })
+            });
+
+            if (response.ok) {
+                setFavoritas(prev => prev.filter(key => key !== sucursalKey));
+            }
+        } else {
+            // Agregar a favoritos
+            const response = await fetch(`http://localhost:8080/api/sucursales-favoritas/agregar`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    idUsuario: currentUser.idUsuario,
+                    idComercio: sucursal.idComercio,
+                    idBandera: sucursal.idBandera,
+                    idSucursal: sucursal.idSucursal,
+                    sucursalNombre: sucursal.sucursalesNombre,
+                    comercioNombre: sucursal.comercioBanderaNombre,
+                    barrioNombre: sucursal.barrioNombre,
+                    latitud: sucursal.sucursalesLatitud,
+                    longitud: sucursal.sucursalesLongitud
+                })
+            });
+
+            if (response.ok) {
+                setFavoritas(prev => [...prev, sucursalKey]);
+            } else if (response.status === 400) {
+                const errorData = await response.json();
+                alert(errorData.error || 'Error al agregar a favoritos');
+            }
+        }
+    } catch (error) {
+        console.error('Error gestionando favorita:', error);
+        alert('Error al gestionar la sucursal favorita');
+    }
+};
 
   useEffect(() => {
     const fetchData = async () => {
@@ -394,17 +488,31 @@ const renderButtonContent = () => {
             </Dropdown>
           </div>
 
-          <Row xs={1} md={2} lg={3} className="g-4">
-            {sucursales
-              .filter(
-                (sucursal) => !selectedProduct || sucursal.precio !== null
-              )
-              .map((sucursal, index) => (
-                <Col key={index}>
-                  <Card
-                    className="h-100 shadow border-0 rounded-4 card-hover"
-                    style={{ transition: "all 0.3s ease-in-out" }}
+      <Row xs={1} md={2} lg={3} className="g-4">
+        {sucursales
+          .filter((sucursal) => !selectedProduct || sucursal.precio !== null)
+          .map((sucursal, index) => {
+            const sucursalKey = `${sucursal.idComercio}-${sucursal.idBandera}-${sucursal.idSucursal}`;
+            const esFavorita = favoritas.includes(sucursalKey);
+
+            return (
+              <Col key={index}>
+                <Card className="h-100 shadow border-0 rounded-4 card-hover position-relative">
+                  {/* Botón de favoritos */}
+                  <Button
+                    variant="link"
+                    className="position-absolute top-0 end-0 p-2"
+                    onClick={() => toggleFavorita(sucursal)}
+                    style={{ zIndex: 10 }}
                   >
+                    {esFavorita ? (
+                      <FaStar className="text-warning" size={20} />
+                    ) : (
+                      <FaRegStar className="text-muted" size={20} />
+                    )}
+                  </Button>
+
+                    
                     <Card.Body className="d-flex flex-column">
                       <div className="d-flex align-items-center mb-3">
                         <img
@@ -513,7 +621,8 @@ const renderButtonContent = () => {
                     </Card.Body>
                   </Card>
                 </Col>
-              ))}
+              );
+            })}
           </Row>
         </>
       )}

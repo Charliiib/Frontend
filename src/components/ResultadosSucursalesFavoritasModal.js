@@ -1,0 +1,332 @@
+import React, { useState, useEffect } from "react";
+import {
+  Modal,
+  Button,
+  Card,
+  Row,
+  Col,
+  Badge,
+  Spinner,
+  Alert,
+} from "react-bootstrap";
+import {
+  FaStore,
+  FaMapMarkerAlt,
+  FaDollarSign,
+  FaTimes,
+  FaShoppingCart,
+} from "react-icons/fa";
+
+const ResultadosSucursalesFavoritasModal = ({
+  show,
+  onHide,
+  lista,
+  currentUser,
+}) => {
+  const [sucursalesFavoritas, setSucursalesFavoritas] = useState([]);
+  const [resultados, setResultados] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (show && lista) {
+      cargarSucursalesFavoritas();
+    }
+  }, [show, lista]);
+
+  const cargarSucursalesFavoritas = async () => {
+    if (!currentUser) return;
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `http://localhost:8080/api/sucursales-favoritas/usuario/${currentUser.idUsuario}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setSucursalesFavoritas(data);
+        buscarPreciosEnSucursales(data);
+      } else {
+        setError("Error al cargar sucursales favoritas");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      setError("Error al cargar sucursales favoritas");
+    }
+  };
+
+  const buscarPreciosEnSucursales = async (sucursales) => {
+    if (!lista || !lista.productos) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const resultadosPorSucursal = {};
+
+      // Para cada sucursal favorita, buscar precios de todos los productos
+      for (const sucursal of sucursales) {
+        resultadosPorSucursal[sucursal.idSucursal] = {
+          sucursal: sucursal,
+          productos: [],
+          loading: true,
+        };
+
+        const productosPromises = lista.productos.map(async (producto) => {
+          try {
+            const token = localStorage.getItem("token");
+            const response = await fetch(
+              `http://localhost:8080/api/productos/precios?id_producto=${producto.idProducto}&id_comercio=${sucursal.idComercio}&id_bandera=${sucursal.idBandera}&id_sucursal=${sucursal.idSucursal}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            );
+
+            if (response.ok) {
+              const data = await response.json();
+              return {
+                producto: producto,
+                precio: data[0]?.productos_precio_lista || null,
+                error: null,
+              };
+            } else {
+              return {
+                producto: producto,
+                precio: null,
+                error: "Error al obtener precio",
+              };
+            }
+          } catch (error) {
+            return {
+              producto: producto,
+              precio: null,
+              error: "Error al obtener precio",
+            };
+          }
+        });
+
+        const productosResultados = await Promise.all(productosPromises);
+        resultadosPorSucursal[sucursal.idSucursal] = {
+          sucursal: sucursal,
+          productos: productosResultados,
+          loading: false,
+        };
+      }
+
+      setResultados(resultadosPorSucursal);
+    } catch (error) {
+      setError("Error al buscar precios: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calcularTotalSucursal = (productos) => {
+    return productos.reduce((total, item) => {
+      return total + (item.precio || 0);
+    }, 0);
+  };
+
+  const productosConPrecioSucursal = (productos) => {
+    return productos.filter((item) => item.precio).length;
+  };
+
+  return (
+    <Modal
+      show={show}
+      onHide={onHide}
+      size="xl"
+      centered
+      className="modern-modal"
+    >
+      <Modal.Header className="border-0 pb-0">
+        <div className="w-100">
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <Modal.Title className="h4 mb-0 text-primary">
+              <FaShoppingCart className="me-2" />
+              {lista?.nombreLista} - Sucursales Favoritas
+            </Modal.Title>
+            <Button variant="link" onClick={onHide} className="text-muted p-0">
+              <FaTimes size={20} />
+            </Button>
+          </div>
+        </div>
+      </Modal.Header>
+
+      <Modal.Body className="pt-0">
+        {error && (
+          <Alert variant="danger" className="border-0 rounded-3 shadow-sm">
+            <div className="d-flex align-items-center">
+              <FaTimes className="me-2" />
+              {error}
+            </div>
+          </Alert>
+        )}
+
+        {loading ? (
+          <div className="text-center py-5">
+            <Spinner animation="border" variant="primary" />
+            <p className="text-muted mt-2">
+              Buscando precios en sucursales favoritas...
+            </p>
+          </div>
+        ) : (
+          <Row className="g-3">
+            {sucursalesFavoritas.map((sucursal) => {
+              const resultado = resultados[sucursal.idSucursal];
+              const productos = resultado?.productos || [];
+              const total = calcularTotalSucursal(productos);
+              const conPrecio = productosConPrecioSucursal(productos);
+              const sinPrecio = productos.length - conPrecio;
+
+              return (
+                <Col md={6} lg={4} key={sucursal.idSucursal}>
+                  <Card className="border-0 shadow-sm h-100">
+                    <Card.Header className="bg-light border-0">
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div>
+                          <h6 className="mb-1">
+                            <img
+                              src={`https://imagenes.preciosclaros.gob.ar/comercios/${sucursal.idComercio}-${sucursal.idBandera}.jpg`}
+                              alt={`Logo ${sucursal.comercioNombre}`}
+                              style={{
+                                width: "40px",
+                                height: "40px",
+                                objectFit: "cover",
+                                borderRadius: "2px",
+                              }}
+                              onError={(e) => {
+                                e.target.style.display = "none";
+                                e.target.nextSibling.style.display = "block";
+                              }}
+                            />
+                            <FaStore
+                              className="text-muted"
+                              size={12}
+                              style={{
+                                display: "none",
+                                position: "absolute",
+                                left: "4px",
+                                top: "4px",
+                              }}
+                            />{" "}
+                            {sucursal.comercioNombre}
+                          </h6>
+                          <small className="text-muted">
+                            {sucursal.sucursalNombre}
+                          </small>
+                          <div className="d-flex align-items-center text-muted small mt-1">
+                            <FaMapMarkerAlt className="me-1" />
+                            {sucursal.barrioNombre}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-2 p-2 bg-white rounded">
+                        <div className="row text-center small">
+                          <div className="col-4">
+                            <div className="fw-bold text-primary">
+                              ${total.toFixed(2)}
+                            </div>
+                            <small>Total</small>
+                          </div>
+                          <div className="col-4">
+                            <div className="fw-bold text-success">
+                              {conPrecio}
+                            </div>
+                            <small>Con precio</small>
+                          </div>
+                          <div className="col-4">
+                            <div className="fw-bold text-warning">
+                              {sinPrecio}
+                            </div>
+                            <small>Sin stock</small>
+                          </div>
+                        </div>
+                      </div>
+                    </Card.Header>
+
+                    <Card.Body className="p-0">
+                      <div
+                        className="productos-sucursal"
+                        style={{ maxHeight: "300px", overflowY: "auto" }}
+                      >
+                        {resultado?.loading ? (
+                          <div className="text-center py-3">
+                            <Spinner
+                              animation="border"
+                              size="sm"
+                              variant="primary"
+                            />
+                            <small className="d-block mt-1">Cargando...</small>
+                          </div>
+                        ) : (
+                          productos.map((item, index) => (
+                            <div key={index} className="border-bottom p-2">
+                              <div className="d-flex justify-content-between align-items-center">
+                                <div className="flex-grow-1">
+                                  <h6 className="mb-1 small fw-semibold">
+                                    {item.producto.descripcion}
+                                  </h6>
+                                  {item.producto.marca &&
+                                    item.producto.marca !== "Sin marca" && (
+                                      <small className="text-muted">
+                                        {item.producto.marca}
+                                      </small>
+                                    )}
+                                </div>
+                                <div className="text-end">
+                                  {item.precio ? (
+                                    <Badge bg="success" className="fs-6">
+                                      ${item.precio.toFixed(2)}
+                                    </Badge>
+                                  ) : (
+                                    <Badge bg="warning" text="dark">
+                                      Sin stock
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              );
+            })}
+          </Row>
+        )}
+
+        {sucursalesFavoritas.length === 0 && !loading && (
+          <div className="text-center py-5">
+            <FaStore className="text-muted mb-3" size={48} />
+            <h5 className="text-muted">No tienes sucursales favoritas</h5>
+            <p className="text-muted">
+              Agrega algunas sucursales a tus favoritos para ver los precios
+              aquí.
+            </p>
+          </div>
+        )}
+      </Modal.Body>
+
+      <Modal.Footer className="border-0">
+        <Button variant="outline-secondary" onClick={onHide}>
+          Cerrar
+        </Button>
+      </Modal.Footer>
+    </Modal>
+  );
+};
+
+export default ResultadosSucursalesFavoritasModal;

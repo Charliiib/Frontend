@@ -164,13 +164,13 @@ body.modal-open {
     transform: translateY(-2px);
 }
 
-/* Ajustes para el botón de eliminar */
+/*  botón de eliminar */
 .productos-lista .btn-outline-danger {
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
 }
 
-/* Mejor alineación del contenido */
+/*alineación del contenido */
 .productos-lista .card-body {
     padding: 0.75rem;
 }
@@ -220,4 +220,103 @@ body.modal-open {
 .btn-outline-primary:hover {
   transform: scale(1.05);
   transition: transform 0.2s ease;
+}
+
+/* Estilos para la edición de listas */
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.clickable:hover {
+    background-color: #f8f9fa;
+}
+
+.list-group-item {
+    transition: all 0.3s ease;
+}
+
+/* botones de acción */
+.btn-outline-primary:hover {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-outline-danger:hover {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* Estilos para las sucursales favoritas */
+.sucursales-favoritas-list .card {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.sucursales-favoritas-list .card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.sidebar-section {
+  margin-bottom: 20px;
+}
+
+/* Estilo para el botón de estrella */
+.btn-link:hover .fa-star,
+.btn-link:hover .fa-reg-star {
+  transform: scale(1.2);
+  transition: transform 0.2s ease;
+}
+
+/* Estilos para el componente de ubicación */
+.sidebar-section {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.sidebar-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #e9ecef;
+  padding-bottom: 0.5rem;
+}
+
+/* Estilos para el botón de eliminar */
+.delete-btn {
+  transition: all 0.3s ease;
+  opacity: 0.6;
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+
+.delete-btn:hover {
+  background-color: #dc3545 !important;
+  color: white !important;
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Estilos para items de lista activos */
+.list-group-item.active {
+  background-color: #f8f9fa !important;
+  border-color: #dee2e6 !important;
+  color: #0d6efd !important;
+}
+
+/* Mejora visual para las tarjetas de dirección */
+.bg-light {
+  background-color: #f8f9fa !important;
+  border: 1px solid #e9ecef;
+}
+
+.hover-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+    transition: all 0.3s ease;
 }
