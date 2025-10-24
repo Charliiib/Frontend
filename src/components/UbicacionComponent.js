@@ -641,10 +641,10 @@ const eliminarDireccion = async (idDireccion, event) => {
       <div className="sidebar-section">
         <h3 className="sidebar-title">
           <FaMapMarkerAlt className="me-2" />
-          Mi ubicación
+          Mi ubicación: 
           {currentUser && location.coords && (
             <Badge bg="success" className="ms-2" style={{ fontSize: "0.6rem" }}>
-              Guardado
+             
             </Badge>
           )}
         </h3>

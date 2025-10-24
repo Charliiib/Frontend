@@ -181,7 +181,7 @@ function App() {
         </Row>
       </Container>
       <FooterComponent />
-      <Chatbot />
+      <Chatbot currentUser={currentUser} />
     </div>
   );
 }
