@@ -200,7 +200,7 @@ export const ResultsComponent = ({
         );
 
 const promises = sucursalesData.map((sucursal) =>
-  api.get(`/productos/precios`, {
+  api.get(`/productos/precios-con-respaldo`, {
     params: {
                 id_producto: selectedProduct.idProducto,
                 id_comercio: sucursal.idComercio,

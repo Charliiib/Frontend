@@ -140,7 +140,7 @@ const BuscarEnListaModal = ({ show, onHide, lista, currentUser }) => {
     try {
       const productosPromises = lista.productos.map(async (producto) => {
         try {
-          const response = await api.get("/productos/precios", {
+          const response = await api.get("/productos/precios-con-respaldo", {
             params: {
               id_producto: producto.idProducto,
               id_comercio: sucursalSeleccionada.idComercio,

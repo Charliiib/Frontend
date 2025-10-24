@@ -12,9 +12,9 @@ import {
 import {
   FaStore,
   FaMapMarkerAlt,
-  FaDollarSign,
   FaTimes,
   FaShoppingCart,
+  FaCrown
 } from "react-icons/fa";
 
 const ResultadosSucursalesFavoritasModal = ({
@@ -27,12 +27,17 @@ const ResultadosSucursalesFavoritasModal = ({
   const [resultados, setResultados] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [sucursalMasBarata, setSucursalMasBarata] = useState(null);
 
   useEffect(() => {
     if (show && lista) {
       cargarSucursalesFavoritas();
     }
   }, [show, lista]);
+
+  useEffect(() => {
+    calcularSucursalMasBarata();
+  }, [resultados]);
 
   const cargarSucursalesFavoritas = async () => {
     if (!currentUser) return;
@@ -71,7 +76,6 @@ const ResultadosSucursalesFavoritasModal = ({
     try {
       const resultadosPorSucursal = {};
 
-      // Para cada sucursal favorita, buscar precios de todos los productos
       for (const sucursal of sucursales) {
         resultadosPorSucursal[sucursal.idSucursal] = {
           sucursal: sucursal,
@@ -83,7 +87,7 @@ const ResultadosSucursalesFavoritasModal = ({
           try {
             const token = localStorage.getItem("token");
             const response = await fetch(
-              `http://localhost:8080/api/productos/precios?id_producto=${producto.idProducto}&id_comercio=${sucursal.idComercio}&id_bandera=${sucursal.idBandera}&id_sucursal=${sucursal.idSucursal}`,
+              `http://localhost:8080/api/productos/precios-con-respaldo?id_producto=${producto.idProducto}&id_comercio=${sucursal.idComercio}&id_bandera=${sucursal.idBandera}&id_sucursal=${sucursal.idSucursal}`,
               {
                 headers: {
                   Authorization: `Bearer ${token}`,
@@ -93,9 +97,11 @@ const ResultadosSucursalesFavoritasModal = ({
 
             if (response.ok) {
               const data = await response.json();
+              const precioEncontrado = data[0]?.productos_precio_lista || null;
+              
               return {
                 producto: producto,
-                precio: data[0]?.productos_precio_lista || null,
+                precio: precioEncontrado,
                 error: null,
               };
             } else {
@@ -138,6 +144,33 @@ const ResultadosSucursalesFavoritasModal = ({
 
   const productosConPrecioSucursal = (productos) => {
     return productos.filter((item) => item.precio).length;
+  };
+
+  const calcularSucursalMasBarata = () => {
+    if (Object.keys(resultados).length === 0) {
+      setSucursalMasBarata(null);
+      return;
+    }
+
+    let menorTotal = Infinity;
+    let sucursalMasBarataId = null;
+
+    Object.values(resultados).forEach(resultado => {
+      if (!resultado.loading) {
+        const total = calcularTotalSucursal(resultado.productos);
+        const conPrecio = productosConPrecioSucursal(resultado.productos);
+        if (conPrecio > 0 && total < menorTotal) {
+          menorTotal = total;
+          sucursalMasBarataId = resultado.sucursal.idSucursal;
+        }
+      }
+    });
+
+    setSucursalMasBarata(sucursalMasBarataId);
+  };
+
+  const esSucursalMasBarata = (sucursalId) => {
+    return sucursalMasBarata === sucursalId;
   };
 
   return (
@@ -187,13 +220,24 @@ const ResultadosSucursalesFavoritasModal = ({
               const total = calcularTotalSucursal(productos);
               const conPrecio = productosConPrecioSucursal(productos);
               const sinPrecio = productos.length - conPrecio;
+              const esMasBarata = esSucursalMasBarata(sucursal.idSucursal);
 
               return (
                 <Col md={6} lg={4} key={sucursal.idSucursal}>
-                  <Card className="border-0 shadow-sm h-100">
+                  <Card className={`border-0 shadow-sm h-100 ${esMasBarata ? 'border-warning border-3' : ''}`}>
                     <Card.Header className="bg-light border-0">
+                      {/* Badge para la sucursal más barata */}
+                      {esMasBarata && (
+                        <div className="position-absolute top-0 start-50 translate-middle mt-1">
+                          <Badge bg="warning" text="dark" className="px-3 py-2">
+                            <FaCrown className="me-1" />
+                            MEJOR PRECIO
+                          </Badge>
+                        </div>
+                      )}
+                      
                       <div className="d-flex justify-content-between align-items-start">
-                        <div>
+                        <div className={esMasBarata ? 'mt-4' : ''}>
                           <h6 className="mb-1">
                             <img
                               src={`https://imagenes.preciosclaros.gob.ar/comercios/${sucursal.idComercio}-${sucursal.idBandera}.jpg`}
@@ -234,7 +278,7 @@ const ResultadosSucursalesFavoritasModal = ({
                       <div className="mt-2 p-2 bg-white rounded">
                         <div className="row text-center small">
                           <div className="col-4">
-                            <div className="fw-bold text-primary">
+                            <div className={`fw-bold ${esMasBarata ? 'text-warning' : 'text-primary'}`}>
                               ${total.toFixed(2)}
                             </div>
                             <small>Total</small>
