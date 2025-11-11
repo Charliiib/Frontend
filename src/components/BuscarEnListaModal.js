@@ -9,6 +9,7 @@ import {
   Row,
   Col,
   Badge,
+  InputGroup,
 } from "react-bootstrap";
 import {
   FaSearch,
@@ -33,6 +34,10 @@ const BuscarEnListaModal = ({ show, onHide, lista, currentUser }) => {
   const [barrioSeleccionado, setBarrioSeleccionado] = useState(null);
   const [comercioSeleccionado, setComercioSeleccionado] = useState(null);
   const [sucursalSeleccionada, setSucursalSeleccionada] = useState(null);
+  
+  // Estado para el buscador de barrios
+  const [busquedaBarrio, setBusquedaBarrio] = useState("");
+  const [barriosFiltrados, setBarriosFiltrados] = useState([]);
 
   useEffect(() => {
     if (show) {
@@ -41,6 +46,18 @@ const BuscarEnListaModal = ({ show, onHide, lista, currentUser }) => {
     }
   }, [show]);
 
+  useEffect(() => {
+    // Filtrar barrios según la búsqueda - inicialmente vacío hasta que el usuario escriba
+    if (busquedaBarrio.trim() === "") {
+      setBarriosFiltrados([]); // No mostrar nada cuando no hay búsqueda
+    } else {
+      const filtrados = barrios.filter(barrio =>
+        barrio.barriosNombre.toLowerCase().includes(busquedaBarrio.toLowerCase())
+      );
+      setBarriosFiltrados(filtrados);
+    }
+  }, [busquedaBarrio, barrios]);
+
   const resetModal = () => {
     setPaso(1);
     setBarrioSeleccionado(null);
@@ -48,6 +65,8 @@ const BuscarEnListaModal = ({ show, onHide, lista, currentUser }) => {
     setSucursalSeleccionada(null);
     setResultados([]);
     setError(null);
+    setBusquedaBarrio("");
+    setBarriosFiltrados([]);
   };
 
   const cargarBarrios = async () => {
@@ -55,6 +74,7 @@ const BuscarEnListaModal = ({ show, onHide, lista, currentUser }) => {
     try {
       const response = await api.get("/barrios");
       setBarrios(response.data);
+      // No inicializar barriosFiltrados - se mantiene vacío hasta que el usuario escriba
     } catch (error) {
       setError(
         "Error al cargar barrios: " +
@@ -274,39 +294,83 @@ const BuscarEnListaModal = ({ show, onHide, lista, currentUser }) => {
         {paso === 1 && (
           <div>
             <h6 className="text-muted mb-3">¿En qué barrio querés buscar?</h6>
+            
+            {/* Buscador de barrios */}
+            <div className="mb-3">
+              <InputGroup>
+                <InputGroup.Text>
+                  <FaSearch className="text-muted" />
+                </InputGroup.Text>
+                <Form.Control
+                  type="text"
+                  placeholder="Escribe el nombre del barrio..."
+                  value={busquedaBarrio}
+                  onChange={(e) => setBusquedaBarrio(e.target.value)}
+                  className="border-0 shadow-sm"
+                  autoFocus
+                />
+              </InputGroup>
+              {busquedaBarrio && (
+                <div className="mt-1">
+                  <small className="text-muted">
+                    {barriosFiltrados.length} barrio(s) encontrado(s)
+                  </small>
+                </div>
+              )}
+            </div>
+
             {loading ? (
               <div className="text-center py-5">
                 <Spinner animation="border" variant="primary" />
                 <p className="text-muted mt-2">Cargando barrios...</p>
               </div>
             ) : (
-              <Row className="g-2">
-                {barrios.map((barrio) => (
-                  <Col md={3} sm={6} key={barrio.idBarrios}>
-                    <Card
-                      className="h-100 border-0 shadow-sm hover-card"
-                      onClick={() => cargarComerciosPorBarrio(barrio)}
-                      style={{ cursor: "pointer", transition: "all 0.3s ease" }}
-                    >
-                      <Card.Body className="text-center p-2">
-                        <div
-                          className="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-1"
-                          style={{ width: "36px", height: "36px" }}
+              <div>
+                {busquedaBarrio === "" ? (
+                  <div className="text-center py-4">
+                    <FaSearch className="text-muted mb-2" size={32} />
+                    <p className="text-muted mb-0">
+                      Escribe el nombre de un barrio para buscarlo
+                    </p>
+                  </div>
+                ) : barriosFiltrados.length === 0 ? (
+                  <div className="text-center py-4">
+                    <FaMapMarkerAlt className="text-muted mb-2" size={32} />
+                    <p className="text-muted mb-0">
+                      No se encontraron barrios con "{busquedaBarrio}"
+                    </p>
+                  </div>
+                ) : (
+                  <Row className="g-2">
+                    {barriosFiltrados.map((barrio) => (
+                      <Col md={4} sm={6} key={barrio.idBarrios}>
+                        <Card
+                          className="h-100 border-0 shadow-sm hover-card"
+                          onClick={() => cargarComerciosPorBarrio(barrio)}
+                          style={{ cursor: "pointer", transition: "all 0.3s ease" }}
                         >
-                          <FaMapMarkerAlt className="text-primary" size={14} />
-                        </div>
-                        <h6 className="mb-0 fw-semibold small">
-                          {barrio.barriosNombre}
-                        </h6>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                ))}
-              </Row>
+                          <Card.Body className="text-center p-2">
+                            <div
+                              className="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-1"
+                              style={{ width: "36px", height: "36px" }}
+                            >
+                              <FaMapMarkerAlt className="text-primary" size={14} />
+                            </div>
+                            <h6 className="mb-0 fw-semibold small">
+                              {barrio.barriosNombre}
+                            </h6>
+                          </Card.Body>
+                        </Card>
+                      </Col>
+                    ))}
+                  </Row>
+                )}
+              </div>
             )}
           </div>
         )}
 
+        {/* Resto del código permanece igual */}
         {/* Selección de Comercio */}
         {paso === 2 && (
           <div>
