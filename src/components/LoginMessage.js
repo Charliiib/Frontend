@@ -1,9 +1,9 @@
 import React from 'react';
+import { FaSignOutAlt, FaUserCircle } from 'react-icons/fa'; 
 
 const LoginMessage = ({ currentUser, onLogout }) => {
 
   const getUserName = () => {
-
     if (currentUser.nombreUsuario) {
       return currentUser.nombreUsuario;
     }
@@ -31,9 +31,16 @@ const LoginMessage = ({ currentUser, onLogout }) => {
 
   return (
     <div className="d-flex align-items-center">
-      <span className="me-3">Bienvenido, {getUserFullName()}</span>
-      <button className="btn btn-outline-danger btn-sm" onClick={onLogout}>
-        <i className="fas fa-sign-out-alt me-1"></i>
+      <FaUserCircle className="text-primary me-2" size={20} />
+      <span className="me-3 text-muted fw-medium"> 
+        Bienvenido, <strong className="text-dark">{getUserFullName()}</strong>
+      </span>
+      <button 
+        className="btn btn-outline-danger btn-sm rounded-3" 
+        onClick={onLogout}
+        title="Cerrar Sesión" 
+      >
+        <FaSignOutAlt className="me-1" />
         Cerrar sesión
       </button>
     </div>

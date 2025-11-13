@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Modal } from 'bootstrap'; // Importa Modal de Bootstrap
+import { Modal, Form, Button, Alert, Spinner } from 'react-bootstrap';
+import { FaUserPlus, FaUser, FaEnvelope, FaLock, FaChevronRight } from 'react-icons/fa';
 
-
-const RegisterComponent = ({ onRegisterSuccess, onClose  }) => {
+// Se pasa `onShowLogin` como prop desde App.js para manejar el cambio de modal
+const RegisterComponent = ({ onRegisterSuccess, onClose, onShowLogin }) => {
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
@@ -13,6 +14,7 @@ const RegisterComponent = ({ onRegisterSuccess, onClose  }) => {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -21,11 +23,21 @@ const RegisterComponent = ({ onRegisterSuccess, onClose  }) => {
     });
   };
 
- const handleSubmit = async (e) => {
+  const handleLinkToLogin = (e) => {
     e.preventDefault();
-    
+    onClose(); // Cerrar el modal de registro
+    onShowLogin(); // Abrir el modal de login
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
     if (formData.password !== formData.confirmPassword) {
       setError('Las contraseñas no coinciden');
+      setLoading(false);
       return;
     }
 
@@ -37,103 +49,103 @@ const RegisterComponent = ({ onRegisterSuccess, onClose  }) => {
         password: formData.password
       });
 
-      setSuccess('Registro exitoso. Por favor inicia sesión.');
+      setSuccess('Registro exitoso. Serás redirigido para iniciar sesión.');
       setError('');
       
-      // Cierra el modal usando la instancia correcta
+      // Esperar un momento y redirigir al login
       setTimeout(() => {
-        const modalElement = document.getElementById('registerModal');
-        if (modalElement) {
-          const modal = Modal.getInstance(modalElement) || new Modal(modalElement);
-          modal.hide();
-        }
-        setSuccess('');
-      }, 2000);
-      
-    } catch (err) {
-      setError(err.response?.data?.message || 'Error al registrar el usuario');
-      console.error(err);
+        onClose();
+        onShowLogin();
+      }, 1500);
+
+    } catch (error) {
+      console.error('Error de registro:', error.response ? error.response.data : error.message);
+      setError(error.response?.data?.message || 'Error al registrar. Inténtalo de nuevo.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">Crear Cuenta</h5>
-            <button type="button" className="btn-close" onClick={onClose}></button>
+    // USANDO EL COMPONENTE MODAL DE REACT-BOOTSTRAP
+    <Modal show={true} onHide={onClose} centered>
+      <Modal.Header closeButton className="border-0 pb-0">
+        <Modal.Title className="fw-bold text-primary">
+          <FaUserPlus className="me-2" />
+          Registrarse
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body className="pt-0">
+        {error && <Alert variant="danger" className="small">{error}</Alert>}
+        {success && <Alert variant="success" className="small">{success}</Alert>}
+        
+        <Form onSubmit={handleSubmit}>
+          {/* Nombre */}
+          <Form.Group className="mb-3" controlId="nombre">
+            <Form.Label className="fw-medium">
+              <FaUser className="me-1 text-muted" /> Nombre
+            </Form.Label>
+            <Form.Control type="text" value={formData.nombre} onChange={handleChange} required className="rounded-3" />
+          </Form.Group>
+          
+          {/* Apellido */}
+          <Form.Group className="mb-3" controlId="apellido">
+            <Form.Label className="fw-medium">
+              <FaUser className="me-1 text-muted" /> Apellido
+            </Form.Label>
+            <Form.Control type="text" value={formData.apellido} onChange={handleChange} required className="rounded-3" />
+          </Form.Group>
+          
+          {/* Email */}
+          <Form.Group className="mb-3" controlId="email">
+            <Form.Label className="fw-medium">
+              <FaEnvelope className="me-1 text-muted" /> Email
+            </Form.Label>
+            <Form.Control type="email" value={formData.email} onChange={handleChange} required className="rounded-3" />
+          </Form.Group>
+          
+          {/* Contraseña */}
+          <Form.Group className="mb-3" controlId="password">
+            <Form.Label className="fw-medium">
+              <FaLock className="me-1 text-muted" /> Contraseña
+            </Form.Label>
+            <Form.Control type="password" value={formData.password} onChange={handleChange} required className="rounded-3" />
+          </Form.Group>
+          
+          {/* Confirmar Contraseña */}
+          <Form.Group className="mb-4" controlId="confirmPassword">
+            <Form.Label className="fw-medium">
+              <FaLock className="me-1 text-muted" /> Confirmar Contraseña
+            </Form.Label>
+            <Form.Control type="password" value={formData.confirmPassword} onChange={handleChange} required className="rounded-3" />
+          </Form.Group>
+          
+          <div className="d-grid">
+            <Button type="submit" variant="primary" disabled={loading} className="py-2 rounded-3">
+              {loading ? (
+                <>
+                  <Spinner animation="border" size="sm" className="me-2" />
+                  Registrando...
+                </>
+              ) : (
+                <>
+                  <FaUserPlus className="me-1" />
+                  Registrarse
+                </>
+              )}
+            </Button>
           </div>
-          <div className="modal-body">
-            {error && <div className="alert alert-danger">{error}</div>}
-            {success && <div className="alert alert-success">{success}</div>}
-            <form id="registerForm" onSubmit={handleSubmit}>
-              <div className="mb-3">
-                <label htmlFor="nombre" className="form-label">Nombre</label>
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  id="nombre" 
-                  value={formData.nombre}
-                  onChange={handleChange}
-                  required 
-                />
-              </div>
-              <div className="mb-3">
-                <label htmlFor="apellido" className="form-label">Apellido</label>
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  id="apellido" 
-                  value={formData.apellido}
-                  onChange={handleChange}
-                  required 
-                />
-              </div>
-              <div className="mb-3">
-                <label htmlFor="email" className="form-label">Email</label>
-                <input 
-                  type="email" 
-                  className="form-control" 
-                  id="email" 
-                  value={formData.email}
-                  onChange={handleChange}
-                  required 
-                />
-              </div>
-              <div className="mb-3">
-                <label htmlFor="password" className="form-label">Contraseña</label>
-                <input 
-                type="password" 
-                className="form-control" 
-                id="password" 
-                value={formData.password}
-                onChange={handleChange}
-                required 
-                />
-              </div>
-              <div className="mb-3">
-                <label htmlFor="confirmPassword" className="form-label">Confirmar contraseña</label>
-                <input 
-                  type="password" 
-                  className="form-control" 
-                  id="confirmPassword" 
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  required 
-                />
-              </div>
-              <div className="d-grid">
-                <button type="submit" className="btn btn-primary">Registrarse</button>
-              </div>
-            </form>
-          </div>
-          <div className="modal-footer justify-content-center">
-            <span>¿Ya tienes cuenta? <a href="#" className="text-primary" data-bs-toggle="modal" data-bs-target="#loginModal" data-bs-dismiss="modal">Inicia sesión</a></span>
-          </div>
-        </div>
-      </div>
-    </div>
+        </Form>
+      </Modal.Body>
+      <Modal.Footer className="justify-content-center border-0 pt-0">
+        <small>
+          ¿Ya tienes cuenta? 
+          <a href="#" className="text-primary fw-bold ms-1" onClick={handleLinkToLogin}>
+            Inicia sesión <FaChevronRight size={10} className="ms-1" />
+          </a>
+        </small>
+      </Modal.Footer>
+    </Modal>
   );
 };
 

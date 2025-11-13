@@ -1,6 +1,6 @@
 import React from "react";
-import { Modal, Button, Card } from "react-bootstrap";
-import { FaStar, FaMapMarkerAlt, FaTimes } from "react-icons/fa";
+import { Modal, Button, Card, Row, Col } from "react-bootstrap";
+import { FaMapMarkerAlt, FaHeart, FaSearch } from "react-icons/fa"; // Usando FaHeart y FaSearch para mejor claridad
 
 const SeleccionarBusquedaModal = ({
   show,
@@ -10,79 +10,88 @@ const SeleccionarBusquedaModal = ({
 }) => {
   return (
     <Modal show={show} onHide={onHide} centered className="modern-modal">
-      <Modal.Header className="border-0 pb-0">
-        <div className="w-100">
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <Modal.Title className="h4 mb-0 text-primary">
-              ¿Cómo quieres buscar?
-            </Modal.Title>
-            <Button variant="link" onClick={onHide} className="text-muted p-0">
-              <FaTimes size={20} />
-            </Button>
-          </div>
-        </div>
+      <Modal.Header closeButton className="border-0 pb-0">
+        <Modal.Title className="h4 fw-bold text-primary">
+          <FaSearch className="me-2" />
+          ¿Cómo quieres buscar los precios de tu lista?
+        </Modal.Title>
       </Modal.Header>
 
       <Modal.Body className="pt-0">
-        <div className="row g-3">
-          <div className="col-md-6">
+        <p className="text-muted mb-4 small">
+          Selecciona una de las dos opciones para continuar con la búsqueda de precios de tu lista de compras.
+        </p>
+        
+        <Row className="g-4">
+          <Col md={6}>
             <Card
-              className="border-0 shadow-sm h-100 text-center hover-card"
+              className="border-0 shadow-lg h-100 text-center hover-card"
               style={{ cursor: "pointer", transition: "all 0.3s ease" }}
               onClick={onSeleccionarFavoritas}
             >
-              <Card.Body className="p-4">
-                <div
-                  className="bg-warning bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
-                  style={{ width: "60px", height: "60px" }}
-                >
-                  <FaStar className="text-warning" size={24} />
+              <Card.Body className="p-4 d-flex flex-column justify-content-between">
+                <div>
+                  {/* Ícono grande y en círculo para Favoritas */}
+                  <div
+                    className="bg-danger bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                    style={{ width: "70px", height: "70px" }}
+                  >
+                    <FaHeart className="text-danger" size={30} />
+                  </div>
+                  <h5 className="text-danger fw-bold">Comparar en Favoritas</h5>
+                  <p className="text-muted small mb-0">
+                    Compara el precio total de tu lista en **todas** las sucursales que marcaste como favoritas. Ideal para encontrar el carrito más barato.
+                  </p>
                 </div>
-                <h5 className="text-warning">Mis Favoritas</h5>
-                <p className="text-muted mb-0">
-                  Buscar en todas mis sucursales favoritas a la vez y comparar
-                  precios entre ellas.
-                </p>
+                <Button 
+                    variant="danger" 
+                    className="mt-3 w-100 rounded-3" 
+                    onClick={onSeleccionarFavoritas}
+                >
+                    Comparar Precios
+                </Button>
               </Card.Body>
             </Card>
-          </div>
+          </Col>
 
-          <div className="col-md-6">
+          <Col md={6}>
             <Card
-              className="border-0 shadow-sm h-100 text-center hover-card"
+              className="border-0 shadow-lg h-100 text-center hover-card"
               style={{ cursor: "pointer", transition: "all 0.3s ease" }}
               onClick={onSeleccionarBarrio}
             >
-              <Card.Body className="p-4">
-                <div
-                  className="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
-                  style={{ width: "60px", height: "60px" }}
-                >
-                  <FaMapMarkerAlt className="text-primary" size={24} />
+              <Card.Body className="p-4 d-flex flex-column justify-content-between">
+                <div>
+                  {/* Ícono grande y en círculo para Búsqueda Específica */}
+                  <div
+                    className="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                    style={{ width: "70px", height: "70px" }}
+                  >
+                    <FaMapMarkerAlt className="text-primary" size={30} />
+                  </div>
+                  <h5 className="text-primary fw-bold">Por Ubicación Específica</h5>
+                  <p className="text-muted small mb-0">
+                    Buscar en un barrio, comercio y sucursal específicos. Útil si ya sabes dónde quieres ir o necesitas un precio puntual.
+                  </p>
                 </div>
-                <h5 className="text-primary">Por Barrio</h5>
-                <p className="text-muted mb-0">
-                  Buscar en un barrio específico, seleccionando comercio y
-                  sucursal paso a paso.
-                </p>
+                <Button 
+                    variant="primary" 
+                    className="mt-3 w-100 rounded-3" 
+                    onClick={onSeleccionarBarrio}
+                >
+                    Seleccionar Sucursal
+                </Button>
               </Card.Body>
             </Card>
-          </div>
-        </div>
+          </Col>
+        </Row>
       </Modal.Body>
 
       <Modal.Footer className="border-0">
-        <Button variant="outline-secondary" onClick={onHide}>
-          Cancelar
+        <Button variant="outline-secondary" onClick={onHide} className="rounded-3 px-4">
+          Cerrar
         </Button>
       </Modal.Footer>
-
-      <style jsx>{`
-        .hover-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
-        }
-      `}</style>
     </Modal>
   );
 };

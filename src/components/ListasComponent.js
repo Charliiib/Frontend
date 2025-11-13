@@ -8,7 +8,17 @@ import {
   Alert,
   ButtonGroup,
 } from "react-bootstrap";
-import { FaEdit, FaTrash, FaSearch, FaList } from "react-icons/fa";
+import { 
+    FaEdit, 
+    FaTrash, 
+    FaSearch, 
+    FaList, 
+    FaPlus, 
+    FaCheck, 
+    FaTimes, 
+    FaArrowLeft, 
+    FaShoppingBag // Icono moderno para cantidad de productos
+} from "react-icons/fa"; 
 import axios from "axios";
 import BuscarEnListaModal from "./BuscarEnListaModal";
 import SeleccionarBusquedaModal from "./SeleccionarBusquedaModal";
@@ -28,6 +38,7 @@ const ListasComponent = ({ currentUser }) => {
     useState(false);
   const [listaParaBuscar, setListaParaBuscar] = useState(null);
 
+  // LOGIC: useEffect para cargar listas - NO MODIFICADO
   useEffect(() => {
     const loadListas = async () => {
       const token = localStorage.getItem("token");
@@ -71,6 +82,7 @@ const ListasComponent = ({ currentUser }) => {
     loadListas();
   }, [currentUser]);
 
+  // LOGIC: Funciones de manejo de listas y productos - NO MODIFICADAS
   const cargarListas = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -247,7 +259,7 @@ const ListasComponent = ({ currentUser }) => {
     }
   };
 
-  // Manejar búsqueda en lista
+  // Manejar búsqueda en lista - NO MODIFICADO
   const handleBuscarEnLista = async (lista) => {
     try {
       const token = localStorage.getItem("token");
@@ -268,97 +280,114 @@ const ListasComponent = ({ currentUser }) => {
       alert("Error al cargar los productos de la lista");
     }
   };
-
+  
+  // VISTA: No logueado
   if (!currentUser) {
     return (
-      <div className="sidebar-section">
-        <h3 className="sidebar-title">
+      <div className="sidebar-section bg-light rounded-3 shadow-sm">
+        <h3 className="sidebar-title fw-bold text-primary">
           <FaList className="me-2" />
           Listas
         </h3>
-        <div className="alert alert-info">
+        <div className="alert alert-info text-center border-0 rounded-3">
           Inicia sesión para ver tus listas
         </div>
       </div>
     );
   }
 
+  // VISTA: Cargando
   if (loading) {
     return (
-      <div className="sidebar-section">
-        <h3 className="sidebar-title">
+      <div className="sidebar-section bg-light rounded-3 shadow-sm">
+        <h3 className="sidebar-title fw-bold text-primary">
           <FaList className="me-2" />
           Mis Listas
         </h3>
-        <div className="text-center">
+        <div className="text-center py-4">
           <Spinner animation="border" variant="primary" />
+          <p className="text-muted small mt-2">Cargando listas...</p>
         </div>
       </div>
     );
   }
 
-  // VISTA DE PRODUCTOS DE UNA LISTA ESPECÍFICA
+  // VISTA: Productos de una lista específica (Refrescada)
   if (listaSeleccionada && !showBuscarModal) {
     return (
-      <div className="sidebar-section">
-        <div className="d-flex align-items-center mb-3">
-          <button
-            className="btn btn-sm btn-outline-secondary me-2"
+      <div className="sidebar-section bg-light rounded-3 shadow-sm">
+        <div className="d-flex align-items-center mb-4 border-bottom pb-3">
+          <Button
+            variant="outline-secondary"
+            size="sm"
+            className="me-3 border-0 rounded-circle p-2" 
             onClick={volverAListas}
+            title="Volver a mis listas"
           >
-            <i className="fas fa-arrow-left"></i>
-          </button>
-          <h5 className="sidebar-title mb-0">
+            <FaArrowLeft />
+          </Button>
+          <h5 className="fw-bold text-primary mb-0 text-truncate">
             {listaSeleccionada.nombreLista}
           </h5>
         </div>
 
-        <div className="mb-2">
-          <small className="text-muted">
+        <div className="mb-3 d-flex align-items-center text-muted small">
+          <FaShoppingBag className="me-2" />
+          <small>
             {listaSeleccionada.productos?.length || 0} producto(s) en la lista
           </small>
         </div>
 
         {!listaSeleccionada.productos ||
         listaSeleccionada.productos.length === 0 ? (
-          <div className="alert alert-info">Esta lista está vacía</div>
+          <Alert variant="info" className="text-center">Esta lista está vacía. ¡Agrega productos!</Alert>
         ) : (
           <div className="productos-lista">
             {listaSeleccionada.productos.map((producto) => (
-              <Card key={producto.idProducto} className="mb-2">
-                <Card.Body className="py-2">
-                  <div className="row align-items-center">
-                    <div className="col-auto">
+              <Card 
+                key={producto.idProducto} 
+                className="mb-3 shadow-sm product-list-item"
+              >
+                <Card.Body className="p-3">
+                  <div className="d-flex align-items-center">
+                    {/* Imagen del producto */}
+                    <div className="flex-shrink-0 me-3">
                       <img
                         src={`https://imagenes.preciosclaros.gob.ar/productos/${producto.idProducto}.jpg`}
-                        className="img-fluid rounded"
+                        className="rounded-3 producto-imagen-lg" 
                         alt={producto.descripcion}
                         style={{
-                          height: "80px",
+                          height: "60px",
+                          width: "60px",
                           objectFit: "cover",
-                          width: "80px",
+                          border: '1px solid #e9ecef' 
                         }}
                         onError={(e) =>
-                          (e.target.src = "https://via.placeholder.com/80")
+                          (e.target.src = "https://via.placeholder.com/60x60?text=ND")
                         }
                       />
                     </div>
 
-                    <div className="col">
-                      <h6 className="card-title mb-1 small">
+                    {/* Descripción y Marca */}
+                    {/* AQUI ESTAN LOS CAMBIOS CLAVE: flex-grow-1 y overflow-hidden en el div padre */}
+                    <div className="flex-grow-1 me-3 overflow-hidden"> 
+                      <p 
+                        className="fw-medium mb-1 small text-truncate" 
+                        title={producto.descripcion}
+                      >
                         {producto.descripcion}
-                      </h6>
+                      </p>
                       {producto.marca && producto.marca !== "Sin marca" && (
-                        <small className="text-muted">
+                        <small className="text-muted d-block text-truncate" style={{ fontSize: '0.75rem' }}>
                           Marca: {producto.marca}
                         </small>
                       )}
                     </div>
-                  </div>
-
-                  <div className="mt-2">
-                    <button
-                      className="btn btn-sm btn-outline-danger"
+                    
+                    {/* Botón de eliminar */}
+                    <Button
+                      variant="outline-danger"
+                      size="sm"
                       onClick={() =>
                         eliminarProducto(
                           listaSeleccionada.idListas,
@@ -366,10 +395,10 @@ const ListasComponent = ({ currentUser }) => {
                         )
                       }
                       title="Eliminar de la lista"
+                      className="flex-shrink-0 border-0 ms-auto" // ms-auto para empujar a la derecha
                     >
-                      <i className="fas fa-trash me-1"></i>
-                      Eliminar
-                    </button>
+                      <FaTrash />
+                    </Button>
                   </div>
                 </Card.Body>
               </Card>
@@ -380,6 +409,7 @@ const ListasComponent = ({ currentUser }) => {
     );
   }
 
+  // LOGIC: Manejadores de modales - NO MODIFICADOS
   const handleSeleccionarFavoritas = () => {
     setShowSeleccionModal(false);
     setShowResultadosFavoritasModal(true);
@@ -391,111 +421,142 @@ const ListasComponent = ({ currentUser }) => {
     setShowBuscarModal(true);
   };
 
-  // VISTA PRINCIPAL DE LISTAS
+  // VISTA: Principal de listas (Refrescada)
   return (
-    <div className="sidebar-section">
-      <h3 className="sidebar-title">
+    <div className="sidebar-section bg-light rounded-3 shadow-sm">
+      <h3 className="sidebar-title fw-bold text-primary">
         <FaList className="me-2" />
         Mis Listas
       </h3>
 
-      {/* Formulario para crear nueva lista */}
-      <div className="mb-3">
-        <div className="input-group">
-          <input
-            type="text"
-            className="form-control form-control-sm"
-            placeholder="Nueva lista..."
-            value={nuevaListaNombre}
-            onChange={(e) => setNuevaListaNombre(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && crearLista()}
-          />
-          <button className="btn btn-primary btn-sm" onClick={crearLista}>
-            <i className="fas fa-plus"></i>
-          </button>
-        </div>
+      {/* Formulario para crear nueva lista (Más moderno) */}
+      <div className="mb-4">
+        <Form onSubmit={(e) => { e.preventDefault(); crearLista(); }}>
+          <div className="input-group shadow-sm rounded-pill overflow-hidden">
+            <Form.Control
+              type="text"
+              placeholder="Nombre de la nueva lista..."
+              value={nuevaListaNombre}
+              onChange={(e) => setNuevaListaNombre(e.target.value)}
+              className="border-0 ps-3 py-2" 
+            />
+            <Button 
+              variant="primary" 
+              type="submit"
+              className="fw-bold px-3"
+              disabled={!nuevaListaNombre.trim()}
+            >
+              <FaPlus className="me-1" />
+              Crear
+            </Button>
+          </div>
+        </Form>
       </div>
 
       {/* Lista de listas */}
       {listas.length === 0 ? (
         <div className="text-center py-3">
-          <p className="text-muted">No tienes listas creadas</p>
+          <p className="text-muted">No tienes listas creadas.</p>
+          <p className="text-secondary small">¡Crea una para empezar a guardar tus productos!</p>
         </div>
       ) : (
         <div className="listas-container">
           {listas.map((lista) => (
-            <Card key={lista.idListas} className="mb-3">
-              <Card.Body>
-                <div className="d-flex justify-content-between align-items-start mb-2">
-                  <div>
-                    <h6 className="mb-1">{lista.nombreLista}</h6>
-                    <small className="text-muted">
-                      {lista.cantidadProductos || 0} productos
-                    </small>
-                  </div>
+            <Card 
+              key={lista.idListas} 
+              className="mb-3 shadow-sm list-card-hover" 
+              style={{ border: '1px solid #e9ecef', borderRadius: '10px' }}
+            >
+              <Card.Body className="p-3">
+                
+                {/* Nombre y Cantidad de Productos */}
+                <div className="d-flex align-items-center mb-3">
+                  <h6 className="fw-bold mb-0 text-truncate me-auto" title={lista.nombreLista}>
+                    {lista.nombreLista}
+                  </h6>
+                  <small className="text-primary fw-medium ms-2">
+                    <FaShoppingBag className="me-1" size={12} />
+                    {lista.cantidadProductos || 0}
+                  </small>
+                </div>
+                
+                {/* Grupo de Botones de Acción: Primaria (Ver) y Secundarias */}
+                <div className="d-flex justify-content-between align-items-center">
+                    
+                    <ButtonGroup size="sm" className="me-2">
+                        {/* Botón para ver productos (Principal) */}
+                        <Button
+                            variant="primary"
+                            onClick={() => verProductosLista(lista.idListas)}
+                            title="Ver Productos de la lista"
+                            className="fw-bold"
+                            style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+                        >
+                            Ver Productos
+                        </Button>
+                        
+                        {/* Botón de Búsqueda */}
+                        <Button
+                            variant="outline-info"
+                            title="Buscar productos en sucursales"
+                            onClick={() => handleBuscarEnLista(lista)}
+                            style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+                        >
+                            <FaSearch />
+                        </Button>
+                    </ButtonGroup>
+                    
+                    <ButtonGroup size="sm">
+                        <Button
+                            variant="outline-secondary"
+                            title="Editar nombre de la lista"
+                            onClick={() => iniciarEdicionLista(lista)}
+                            className="border-0"
+                        >
+                            <FaEdit />
+                        </Button>
+                        <Button
+                            variant="outline-danger"
+                            title="Eliminar lista"
+                            onClick={() =>
+                                eliminarLista(lista.idListas, lista.nombreLista)
+                            }
+                            className="border-0"
+                        >
+                            <FaTrash />
+                        </Button>
+                    </ButtonGroup>
 
-                  <ButtonGroup size="sm">
-                    {/* NUEVO BOTÓN DE BÚSQUEDA */}
-                    <Button
-                      variant="outline-info"
-                      title="Buscar productos en sucursales"
-                      onClick={() => handleBuscarEnLista(lista)}
-                    >
-                      <FaSearch />
-                    </Button>
-
-                    <Button
-                      variant="outline-secondary"
-                      title="Editar lista"
-                      onClick={() => iniciarEdicionLista(lista)}
-                    >
-                      <FaEdit />
-                    </Button>
-
-                    <Button
-                      variant="outline-danger"
-                      title="Eliminar lista"
-                      onClick={() =>
-                        eliminarLista(lista.idListas, lista.nombreLista)
-                      }
-                    >
-                      <FaTrash />
-                    </Button>
-                  </ButtonGroup>
                 </div>
 
-                {/* Botón para ver productos */}
-                <Button
-                  variant="outline-primary"
-                  size="sm"
-                  onClick={() => verProductosLista(lista.idListas)}
-                  className="w-100"
-                >
-                  Ver Productos
-                </Button>
 
                 {/* Modo edición */}
                 {editandoLista === lista.idListas && (
-                  <div className="mt-2">
+                  <div className="mt-3">
                     <div className="input-group input-group-sm">
-                      <input
+                      <Form.Control
                         type="text"
-                        className="form-control"
                         value={nuevoNombreLista}
                         onChange={(e) => setNuevoNombreLista(e.target.value)}
                         onKeyPress={(e) =>
                           e.key === "Enter" &&
                           guardarNombreLista(lista.idListas)
                         }
+                        className="border-end-0"
                       />
                       <Button
                         variant="success"
                         onClick={() => guardarNombreLista(lista.idListas)}
+                        title="Guardar"
                       >
-                        <i className="fas fa-check"></i>
+                        <FaCheck />
                       </Button>
-                      <Button variant="secondary" onClick={cancelarEdicion}>
-                        <i className="fas fa-times"></i>
+                      <Button 
+                        variant="secondary" 
+                        onClick={cancelarEdicion}
+                        title="Cancelar"
+                      >
+                        <FaTimes />
                       </Button>
                     </div>
                   </div>
@@ -506,7 +567,7 @@ const ListasComponent = ({ currentUser }) => {
         </div>
       )}
 
-      {/* Modal de selección de búsqueda */}
+      {/* Modales - NO MODIFICADOS */}
       <SeleccionarBusquedaModal
         show={showSeleccionModal}
         onHide={() => setShowSeleccionModal(false)}
@@ -514,7 +575,6 @@ const ListasComponent = ({ currentUser }) => {
         onSeleccionarBarrio={handleSeleccionarBarrio}
       />
 
-      {/* Modal de resultados por sucursales favoritas */}
       <ResultadosSucursalesFavoritasModal
         show={showResultadosFavoritasModal}
         onHide={() => {
@@ -525,7 +585,6 @@ const ListasComponent = ({ currentUser }) => {
         currentUser={currentUser}
       />
 
-      {/* Modal de búsqueda normal*/}
       <BuscarEnListaModal
         show={showBuscarModal}
         onHide={() => {

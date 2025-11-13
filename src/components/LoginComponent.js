@@ -1,14 +1,19 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { Modal, Form, Button, Alert, Spinner } from 'react-bootstrap';
+import { FaSignInAlt, FaEnvelope, FaLock } from 'react-icons/fa'; // Importamos íconos
 
 export const LoginComponent = ({ onLoginSuccess, onClose }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
+
     try {
       console.log('Intentando login con:', { email, password });
       
@@ -26,74 +31,87 @@ export const LoginComponent = ({ onLoginSuccess, onClose }) => {
       
       // ADAPTAR la estructura del usuario para que coincida con lo que espera el frontend
       const adaptedUser = {
-        idUsuario: userFromBackend.id, // ← Convertir 'id' a 'idUsuario'
-        nombreUsuario: userFromBackend.nombre, // ← 'nombre' a 'nombreUsuario'
-        apellidoUsuario: userFromBackend.apellido, // ← 'apellido' a 'apellidoUsuario'
-        emailUsuario: userFromBackend.email // ← 'email' a 'emailUsuario'
+        idUsuario: userFromBackend.id, 
+        nombreUsuario: userFromBackend.nombre, 
+        apellidoUsuario: userFromBackend.apellido, 
+        emailUsuario: userFromBackend.email 
       };
       
       console.log('👤 Usuario adaptado:', adaptedUser);
       
-      if (token && adaptedUser.idUsuario) {
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(adaptedUser));
-        
-        console.log('💾 Guardado en localStorage - token:', localStorage.getItem('token'));
-        console.log('💾 Guardado en localStorage - user:', localStorage.getItem('user'));
-        
-        onLoginSuccess(adaptedUser);
-        onClose();
-      } else {
-        throw new Error('Formato de respuesta incorrecto');
-      }
-    } catch (err) {
-      console.error('❌ Error completo:', err);
-      setError(
-        err.response?.data?.message || 
-        'Error al iniciar sesión. Verifica tus credenciales.'
-      );
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(adaptedUser));
+
+      onLoginSuccess(adaptedUser);
+      onClose();
+
+    } catch (error) {
+      console.error('❌ Error de login:', error.response ? error.response.data : error.message);
+      setError(error.response?.data?.message || 'Error al iniciar sesión. Verifica tus credenciales.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">Iniciar sesión</h5>
-            <button type="button" className="btn-close" onClick={onClose}></button>
+    // USANDO EL COMPONENTE MODAL DE REACT-BOOTSTRAP
+    <Modal show={true} onHide={onClose} centered> 
+      <Modal.Header closeButton className="border-0 pb-0">
+        <Modal.Title className="fw-bold text-primary">
+          <FaSignInAlt className="me-2" />
+          Iniciar Sesión
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body className="pt-0">
+        {error && <Alert variant="danger" className="small">{error}</Alert>}
+        <Form onSubmit={handleSubmit}>
+          
+          <Form.Group className="mb-3" controlId="email">
+            <Form.Label className="fw-medium">
+              <FaEnvelope className="me-1 text-muted" /> Email
+            </Form.Label>
+            <Form.Control
+              type="email"
+              placeholder="Ingresa tu email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="rounded-3"
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-4" controlId="password">
+            <Form.Label className="fw-medium">
+              <FaLock className="me-1 text-muted" /> Contraseña
+            </Form.Label>
+            <Form.Control
+              type="password"
+              placeholder="Ingresa tu contraseña"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="rounded-3"
+            />
+          </Form.Group>
+
+          <div className="d-grid">
+            <Button type="submit" variant="primary" disabled={loading} className="py-2 rounded-3">
+              {loading ? (
+                <>
+                  <Spinner animation="border" size="sm" className="me-2" />
+                  Ingresando...
+                </>
+              ) : (
+                <>
+                  <FaSignInAlt className="me-1" />
+                  Ingresar
+                </>
+              )}
+            </Button>
           </div>
-          <div className="modal-body">
-            {error && <div className="alert alert-danger">{error}</div>}
-            <form onSubmit={handleSubmit}>
-              <div className="mb-3">
-                <label className="form-label">Email</label>
-                <input 
-                  type="email" 
-                  className="form-control" 
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="mb-3">
-                <label className="form-label">Contraseña</label>
-                <input 
-                  type="password" 
-                  className="form-control" 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="d-grid">
-                <button type="submit" className="btn btn-primary">Ingresar</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
+        </Form>
+      </Modal.Body>
+    </Modal>
   );
 };
 
