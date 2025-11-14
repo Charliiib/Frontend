@@ -1,4 +1,4 @@
-// components/ContactanosModal.js
+// components/ContactanosModal.js - VERSIÓN CON COPIA AL USUARIO
 import React, { useState } from 'react';
 import { Modal, Button, Form, Alert } from 'react-bootstrap';
 import emailjs from '@emailjs/browser';
@@ -11,6 +11,15 @@ const ContactanosModal = ({ show, onClose }) => {
     mensaje: ''
   });
   const [showAlert, setShowAlert] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // REEMPLAZA CON TUS DATOS REALES DE EMAILJS
+  const EMAILJS_CONFIG = {
+    SERVICE_ID: 'service_akkydrf',
+    TEMPLATE_ID_ADMIN: 'template_bck0a3p', // Para ti
+    TEMPLATE_ID_USER: 'template_7x5bzq5',   // Para el usuario
+    PUBLIC_KEY: 'D5gYkYF1RdNiwetsh'
+  };
 
   const handleChange = (e) => {
     setFormData({
@@ -19,40 +28,71 @@ const ContactanosModal = ({ show, onClose }) => {
     });
   };
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  try {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.nombre || !formData.email || !formData.asunto || !formData.mensaje) {
+      alert('Por favor completa todos los campos');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
     const templateParams = {
       from_name: formData.nombre,
       from_email: formData.email,
       subject: formData.asunto,
       message: formData.mensaje,
-      to_email: 'tucorreo@gmail.com'
+      reply_to: formData.email
     };
 
-    await emailjs.send(
-      'YOUR_SERVICE_ID', // De EmailJS
-      'YOUR_TEMPLATE_ID', // De EmailJS
-      templateParams,
-      'YOUR_PUBLIC_KEY' // De EmailJS
-    );
+      // Enviar email al ADMIN (tú)
+      const adminResult = await emailjs.send(
+        EMAILJS_CONFIG.SERVICE_ID,
+        EMAILJS_CONFIG.TEMPLATE_ID_ADMIN,
+        templateParams,
+        EMAILJS_CONFIG.PUBLIC_KEY
+      );
 
-    setShowAlert(true);
-    setTimeout(() => {
-      setShowAlert(false);
-      onClose();
-      setFormData({ nombre: '', email: '', asunto: '', mensaje: '' });
-    }, 2000);
-    
-  } catch (error) {
-    console.error('Error enviando email:', error);
-    alert('Error al enviar el mensaje. Intenta nuevamente.');
-  }
-};
+      console.log('✅ Email al admin enviado:', adminResult);
+
+      // Enviar email de confirmación al USUARIO
+      const userResult = await emailjs.send(
+        EMAILJS_CONFIG.SERVICE_ID,
+        EMAILJS_CONFIG.TEMPLATE_ID_USER,
+        templateParams,
+        EMAILJS_CONFIG.PUBLIC_KEY
+      );
+
+      console.log('✅ Email al usuario enviado:', userResult);
+      
+      setShowAlert(true);
+      setTimeout(() => {
+        setShowAlert(false);
+        setIsLoading(false);
+        setFormData({ nombre: '', email: '', asunto: '', mensaje: '' });
+        onClose();
+      }, 4000);
+
+    } catch (error) {
+      console.error('❌ Error EmailJS:', error);
+      
+      let errorMessage = 'Error al enviar el mensaje. Intenta nuevamente.';
+      
+      if (error.text) {
+        errorMessage = `Error: ${error.text}`;
+      } else if (error.status) {
+        errorMessage = `Error ${error.status}: ${error.text || 'Verifica tu configuración'}`;
+      }
+      
+      alert(errorMessage);
+      setIsLoading(false);
+    }
+  };
 
   const openWhatsApp = () => {
-    const phoneNumber = '5491112345678'; // Número sin espacios ni caracteres especiales
+    const phoneNumber = '5491112345678';
     const message = 'Hola, me gustaría obtener más información sobre ComparAR';
     const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
@@ -89,7 +129,8 @@ const ContactanosModal = ({ show, onClose }) => {
       <Modal.Body>
         {showAlert && (
           <Alert variant="success" className="mb-3">
-            ¡Mensaje enviado correctamente! Te contactaremos pronto.
+            <strong>¡Mensaje enviado correctamente!</strong><br />
+            Te hemos enviado una copia a tu email. Te contactaremos dentro de las próximas 24 horas.
           </Alert>
         )}
 
@@ -138,7 +179,7 @@ const ContactanosModal = ({ show, onClose }) => {
             <h5 className="text-primary">✉️ Envíanos un Mensaje</h5>
             <Form onSubmit={handleSubmit}>
               <Form.Group className="mb-3">
-                <Form.Label>Nombre completo</Form.Label>
+                <Form.Label>Nombre completo *</Form.Label>
                 <Form.Control
                   type="text"
                   name="nombre"
@@ -146,11 +187,12 @@ const ContactanosModal = ({ show, onClose }) => {
                   onChange={handleChange}
                   required
                   placeholder="Tu nombre"
+                  disabled={isLoading}
                 />
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>Email</Form.Label>
+                <Form.Label>Email *</Form.Label>
                 <Form.Control
                   type="email"
                   name="email"
@@ -158,16 +200,18 @@ const ContactanosModal = ({ show, onClose }) => {
                   onChange={handleChange}
                   required
                   placeholder="tu@email.com"
+                  disabled={isLoading}
                 />
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>Asunto</Form.Label>
+                <Form.Label>Asunto *</Form.Label>
                 <Form.Select
                   name="asunto"
                   value={formData.asunto}
                   onChange={handleChange}
                   required
+                  disabled={isLoading}
                 >
                   <option value="">Selecciona un asunto</option>
                   <option value="soporte">Soporte técnico</option>
@@ -179,7 +223,7 @@ const ContactanosModal = ({ show, onClose }) => {
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>Mensaje</Form.Label>
+                <Form.Label>Mensaje *</Form.Label>
                 <Form.Control
                   as="textarea"
                   rows={4}
@@ -188,13 +232,30 @@ const ContactanosModal = ({ show, onClose }) => {
                   onChange={handleChange}
                   required
                   placeholder="Describe tu consulta o sugerencia..."
+                  disabled={isLoading}
                 />
               </Form.Group>
 
               <div className="d-grid">
-                <Button variant="primary" type="submit">
-                  Enviar Mensaje
+                <Button 
+                  variant="primary" 
+                  type="submit"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" />
+                      Enviando...
+                    </>
+                  ) : (
+                    'Enviar Mensaje'
+                  )}
                 </Button>
+              </div>
+              <div className="text-center mt-2">
+                <small className="text-muted">
+                  * Campos obligatorios. Recibirás una copia en tu email.
+                </small>
               </div>
             </Form>
           </div>
