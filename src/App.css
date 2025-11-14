@@ -603,6 +603,7 @@ body.modal-open {
 /* Estilos para texto formateado */
 .message-text {
   white-space: pre-wrap;
+  line-height: 1.5;
 }
 
 .message-section-title {
@@ -960,4 +961,30 @@ body.modal-open {
 .message-text {
   white-space: pre-wrap;
   line-height: 1.5;
+}
+.dot-animation {
+    /* Es importante que cada punto esté en su propia línea para que la opacidad funcione */
+    display: inline-block; 
+    
+    /* Definición de la animación: 1.5s, infinita, usa la keyframe 'dot-fade' */
+    animation: dot-fade 1.5s infinite;
+    
+    /* Estado inicial: invisible */
+    opacity: 0;
+}
+
+/* Definición de la animación de opacidad */
+@keyframes dot-fade {
+    /* El punto es invisible (0%) y se mantiene invisible */
+    0%, 30% { 
+        opacity: 0; 
+    }
+    /* Se hace visible (100%) */
+    50% { 
+        opacity: 1; 
+    }
+    /* Se mantiene visible brevemente y luego vuelve a 0% */
+    100% { 
+        opacity: 0; 
+    }
 }
