@@ -136,6 +136,7 @@ function App() {
         <RegisterComponent
           onRegisterSuccess={handleRegisterSuccess}
           onClose={() => setShowRegister(false)}
+          onShowLogin={handleShowLogin}
         />
       )}
 
