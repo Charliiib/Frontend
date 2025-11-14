@@ -1,5 +1,5 @@
-// ChatBotComponent.js - Versión completamente renovada
 import { useState, useEffect, useRef } from "react";
+import api from '../api';
 import {
   FaRobot,
   FaUser,
@@ -9,7 +9,8 @@ import {
   FaExpand,
   FaCompress,
   FaCopy,
-  FaRegCopy
+  FaRegCopy,
+  FaSpinner
 } from "react-icons/fa";
 
 const ChatBotComponent = ({ currentUser }) => {
@@ -19,12 +20,13 @@ const ChatBotComponent = ({ currentUser }) => {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [waitingForProductConfirmation, setWaitingForProductConfirmation] = useState(false);
-  const [lastRecipe, setLastRecipe] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   
   const messagesEndRef = useRef(null);
   const textAreaRef = useRef(null);
+  const eventSourceRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -35,7 +37,6 @@ const ChatBotComponent = ({ currentUser }) => {
   }, [messages]);
 
   useEffect(() => {
-    // Mensaje de bienvenida inicial
     if (messages.length === 0) {
       setMessages([
         {
@@ -43,12 +44,12 @@ const ChatBotComponent = ({ currentUser }) => {
           text: "¡Hola! Soy tu asistente culinario. Puedo ayudarte a encontrar recetas deliciosas. ¿Qué te gustaría cocinar hoy?",
           isBot: true,
           timestamp: new Date(),
+          type: "text"
         },
       ]);
     }
   }, []);
 
-  // Auto-ajustar altura del textarea
   useEffect(() => {
     if (textAreaRef.current) {
       textAreaRef.current.style.height = "auto";
@@ -56,274 +57,252 @@ const ChatBotComponent = ({ currentUser }) => {
     }
   }, [inputMessage]);
 
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+    };
+  }, []);
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!inputMessage.trim() || isLoading) return;
+    if (!inputMessage.trim() || isLoading || isStreaming) return;
 
     const userMessage = {
-      id: Date.now(),
+      id: Date.now() +1,
       text: inputMessage,
       isBot: false,
       timestamp: new Date(),
+      type: "text"
     };
 
     setMessages((prev) => [...prev, userMessage]);
     const currentMessage = inputMessage;
     setInputMessage("");
+    
+    // Llamamos siempre al streaming para el efecto de escritura
+    await generarRecetaConStreaming(currentMessage);
+  };
+
+// Función esConsultaDeReceta eliminada (ya no se usa)
+
+  const generarRecetaConStreaming = async (mensajeUsuario) => {
     setIsLoading(true);
+    setIsStreaming(true);
+    setProgress(0);
 
-    if (waitingForProductConfirmation) {
-      const respuesta = currentMessage.toLowerCase().trim();
-      if (esRespuestaAfirmativa(respuesta)) {
-        await buscarProductosEnBaseDeDatos();
-        setWaitingForProductConfirmation(false);
-      } else {
-        const botMessage = {
-          id: Date.now() + 1,
-          text: "¡Perfecto! ¿Te gustaría consultar otra receta? 😊",
-          isBot: true,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, botMessage]);
-        setWaitingForProductConfirmation(false);
-        setLastRecipe("");
-      }
-      setIsLoading(false);
-      return;
-    }
+    // Creamos el mensaje de "cargando" antes de iniciar el stream
+    const loadingMessage = {
+        id: Date.now() + 2,
+        text: "🤖 Analizando tu consulta y generando receta...",
+        isBot: true,
+        timestamp: new Date(),
+        type: "loading"
+    };
+    setMessages((prev) => [...prev, loadingMessage]);
 
-    if (esConsultaDeReceta(currentMessage)) {
-      setLastRecipe("");
-      await generarRecetaSolo(currentMessage);
-    } else {
-      await generarRespuestaGeneral(currentMessage);
-    }
-  };
-
-  const esConsultaDeReceta = (mensaje) => {
-    const palabrasReceta = ['receta', 'como hacer', 'tutorial', 'preparar', 'cocinar', 'hacer', 'recetario'];
-    return palabrasReceta.some(palabra => mensaje.toLowerCase().includes(palabra));
-  };
-
-  const esRespuestaAfirmativa = (respuesta) => {
-    const respuestasSi = ['si', 'sí', 'yes', 'vale', 'ok', 'de acuerdo', 'por supuesto', 'quiero ver', 'sí quiero'];
-    return respuestasSi.some(resp => respuesta.includes(resp));
-  };
-
-  const generarRecetaSolo = async (mensajeUsuario) => {
     try {
-      const token = localStorage.getItem("token");
-      const headers = {
-        "Content-Type": "application/json",
+      const encodedMessage = encodeURIComponent(mensajeUsuario);
+      // Nota: Eliminamos el token de la URL, asumiendo que la ruta es pública o usa cookies
+      let url = `http://localhost:8080/api/chatbot/consulta-stream?mensaje=${encodedMessage}`;
+
+  
+      eventSourceRef.current = new EventSource(url);
+
+      eventSourceRef.current.onopen = () => {
+        console.log("Conexión SSE establecida");
       };
 
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const response = await fetch("http://localhost:8080/api/chatbot/solo-receta", {
-        method: "POST",
-        headers: headers,
-        body: JSON.stringify({ mensaje: mensajeUsuario }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Error en la respuesta del servidor");
-      }
-
-      const data = await response.json();
-      
-      // Dividir el texto largo en partes más manejables
-      const mensajesDivididos = dividirMensajeLargo(data.respuesta);
-      
-      // Agregar todos los mensajes divididos
-      mensajesDivididos.forEach((texto, index) => {
-        const botMessage = {
-          id: Date.now() + index,
-          text: texto,
-          isBot: true,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, botMessage]);
-      });
-
-      // Solo preguntar por productos en el último mensaje
-      const preguntaProductos = {
-        id: Date.now() + mensajesDivididos.length,
-        text: "🛒 **¿Te gustaría que busque los ingredientes en nuestra base de datos?** (Responde 'sí' para ver productos disponibles)",
-        isBot: true,
-        timestamp: new Date(),
-      };
-      
-      setMessages((prev) => [...prev, preguntaProductos]);
-      setLastRecipe(data.respuesta);
-      setWaitingForProductConfirmation(true);
-      
-    } catch (error) {
-      console.error("Error al generar receta:", error);
-      const errorMessage = {
-        id: Date.now(),
-        text: "Lo siento, hubo un error al generar la receta. Por favor, intenta de nuevo.",
-        isBot: true,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Función para dividir mensajes largos en partes más pequeñas
-  const dividirMensajeLargo = (texto) => {
-    const maxLength = 1500; // Caracteres por mensaje
-    const partes = [];
-    
-    if (texto.length <= maxLength) {
-      return [texto];
-    }
-
-    // Dividir por secciones (###)
-    const secciones = texto.split('###');
-    
-    secciones.forEach((seccion, index) => {
-      if (seccion.trim()) {
-        const seccionCompleta = index === 0 ? seccion : `###${seccion}`;
-        
-        if (seccionCompleta.length <= maxLength) {
-          partes.push(seccionCompleta);
-        } else {
-          // Dividir la sección en párrafos más pequeños
-          const parrafos = seccionCompleta.split('\n\n');
-          let mensajeActual = '';
-          
-          parrafos.forEach(parrafo => {
-            if ((mensajeActual + parrafo).length <= maxLength) {
-              mensajeActual += (mensajeActual ? '\n\n' : '') + parrafo;
-            } else {
-              if (mensajeActual) partes.push(mensajeActual);
-              mensajeActual = parrafo;
-            }
-          });
-          
-          if (mensajeActual) partes.push(mensajeActual);
+      eventSourceRef.current.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('Evento recibido:', data);
+          handleStreamEvent(data);
+        } catch (error) {
+          console.error("Error parsing SSE data:", error);
         }
-      }
+      };
+
+      eventSourceRef.current.addEventListener('inicio', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('Evento inicio:', data);
+          handleStreamEvent(data);
+        } catch (error) {
+          console.error("Error parsing inicio event:", error);
+        }
+      });
+
+      eventSourceRef.current.addEventListener('receta', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('Evento receta:', data);
+          handleStreamEvent(data);
+        } catch (error) {
+          console.error("Error parsing receta event:", error);
+        }
+      });
+
+      eventSourceRef.current.addEventListener('completo', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('Evento completo:', data);
+          handleStreamEvent(data);
+        } catch (error) {
+          console.error("Error parsing completo event:", error);
+        }
+      });
+
+      eventSourceRef.current.addEventListener('error', (event) => {
+if (event.data) {
+        try {
+            const data = JSON.parse(event.data);
+            console.log('Evento error:', data);
+            handleStreamEvent(data);
+        } catch (error) {
+            console.error("Error parsing error event:", error);
+        }
+    } else {
+        handleStreamError(); 
+    }
+});
+
+      eventSourceRef.current.onerror = (error) => {
+        console.error("SSE Error:", error);
+        handleStreamError();
+      };
+
+    } catch (error) {
+      console.error("Error al iniciar streaming:", error);
+      handleStreamError();
+    }
+  };
+
+const handleStreamEvent = (data) => {
+    console.log('📨 Evento recibido:', data);
+    
+    switch (data.type) {
+        case 'inicio':
+        case 'empezando':
+            console.log('🔄 Actualizando mensaje de estado:', data.data);
+            setMessages(prev => prev.map(msg => 
+                msg.type === 'loading' 
+                    ? { ...msg, text: data.data, type: 'text' }
+                    : msg
+            ));
+            break;
+            
+        case 'receta':
+            if (data.linea !== undefined) {
+                console.log('📝 Procesando fragmento de receta:', data.linea);
+                handleRecipeLine(data);
+            }
+            break;
+            
+        case 'completo':
+            console.log('✅ Streaming completado');
+            handleStreamComplete();
+            break;
+            
+        case 'error':
+            console.log('❌ Error en streaming');
+            handleStreamError();
+            break;
+            
+        default:
+            console.log('❓ Tipo de evento no manejado:', data.type);
+    }
+};
+
+const handleRecipeLine = (data) => {
+    const { linea, progreso } = data;
+    
+    if (progreso !== undefined) {
+        setProgress(progreso);
+    }
+
+    setMessages(prev => {
+        // Buscar mensaje de streaming existente
+        const existingStreamingIndex = prev.findIndex(msg => msg.type === 'streaming');
+        
+        if (existingStreamingIndex !== -1) {
+            // Actualizar mensaje existente - CONCATENAR FRAGMENTO
+            const updatedMessages = [...prev];
+            const existingMessage = updatedMessages[existingStreamingIndex];
+            
+            // MODIFICACIÓN CLAVE: CONCATENAR el fragmento sin separador
+            const newText = existingMessage.text + linea; 
+            
+            updatedMessages[existingStreamingIndex] = {
+                ...existingMessage,
+                text: newText,
+                timestamp: new Date()
+            };
+            
+            return updatedMessages;
+        } else {
+            // Crear nuevo mensaje de streaming
+            const newMessage = {
+                id: Date.now() + 3, // ID único para el primer fragmento
+                text: linea,
+                isBot: true,
+                timestamp: new Date(),
+                type: 'streaming'
+            };
+            
+            // Remover mensaje de loading si existe
+            const filteredMessages = prev.filter(msg => msg.type !== 'loading');
+            return [...filteredMessages, newMessage];
+        }
     });
+};
 
-    return partes;
-  };
-
-  const buscarProductosEnBaseDeDatos = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const headers = {
-        "Content-Type": "application/json",
-      };
-
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const consultaParaProductos = lastRecipe || 
-        messages.filter(m => !m.isBot).slice(-1)[0]?.text || "";
-
-      if (!consultaParaProductos) {
-        throw new Error("No se encontró consulta para buscar productos");
-      }
-
-      const response = await fetch("http://localhost:8080/api/chatbot/buscar-productos", {
-        method: "POST",
-        headers: headers,
-        body: JSON.stringify({ 
-          receta: lastRecipe
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Error al buscar productos");
-      }
-
-      const data = await response.json();
-      const productosText = formatearSoloProductos(data);
-      
-      // Dividir también el mensaje de productos si es muy largo
-      const mensajesProductos = dividirMensajeLargo(productosText);
-      
-      mensajesProductos.forEach((texto, index) => {
-        const botMessage = {
-          id: Date.now() + index,
-          text: texto,
-          isBot: true,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, botMessage]);
-      });
-      
-      setLastRecipe("");
-      
-    } catch (error) {
-      console.error("Error al buscar productos:", error);
-      const errorMessage = {
-        id: Date.now(),
-        text: "Lo siento, no pude buscar los productos en este momento. ¿Te gustaría intentar de nuevo?",
-        isBot: true,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
+  const handleStreamComplete = () => {
+    setIsLoading(false);
+    setIsStreaming(false);
+    setProgress(100);
+    
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
     }
+
+    setMessages(prev => prev.map(msg => 
+      msg.type === 'streaming' ? { ...msg, type: 'text' } : msg
+    ));
   };
 
-  const generarRespuestaGeneral = async (mensajeUsuario) => {
-    try {
-      const token = localStorage.getItem("token");
-      const headers = {
-        "Content-Type": "application/json",
-      };
-
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const response = await fetch("http://localhost:8080/api/chatbot/solo-receta", {
-        method: "POST",
-        headers: headers,
-        body: JSON.stringify({ mensaje: mensajeUsuario }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Error en la respuesta del servidor");
-      }
-
-      const data = await response.json();
-      
-      // Dividir respuesta general si es larga
-      const mensajesDivididos = dividirMensajeLargo(data.respuesta);
-      
-      mensajesDivididos.forEach((texto, index) => {
-        const botMessage = {
-          id: Date.now() + index,
-          text: texto,
-          isBot: true,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, botMessage]);
-      });
-      
-    } catch (error) {
-      console.error("Error al enviar mensaje:", error);
-      const errorMessage = {
-        id: Date.now(),
-        text: "Lo siento, hubo un error al procesar tu consulta. Por favor, intenta de nuevo.",
-        isBot: true,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
+  const handleStreamError = () => {
+    setIsLoading(false);
+    setIsStreaming(false);
+    
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
     }
+
+    setMessages(prev => {
+        // Usamos un ID único para el mensaje de error
+        const errorId = Date.now() + 4;
+        
+        // Filtramos mensajes de 'loading' y 'streaming' antes de añadir el error
+        const filteredMessages = prev.filter(msg => msg.type !== 'loading' && msg.type !== 'streaming');
+
+        return [
+            ...filteredMessages,
+            {
+                id: errorId,
+                text: "❌ Lo siento, hubo un error al generar la receta. Por favor, intenta de nuevo.",
+                isBot: true,
+                timestamp: new Date(),
+                type: 'text'
+            }
+        ];
+    });
   };
+
+// Función generarRespuestaGeneral eliminada (ya no se usa)
 
   const toggleChat = () => {
     if (isMinimized) {
@@ -346,31 +325,6 @@ const ChatBotComponent = ({ currentUser }) => {
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
-
-  const formatearSoloProductos = (data) => {
-    let respuesta = '🛒 **PRODUCTOS ENCONTRADOS EN NUESTRA BASE DE DATOS:**\n\n';
-    
-    if (data.productosEncontrados && data.productosEncontrados.length > 0) {
-      data.productosEncontrados.forEach(ingrediente => {
-        respuesta += `📋 **${ingrediente.nombreIngrediente}:**\n`;
-        
-        if (ingrediente.productos && ingrediente.productos.length > 0) {
-          ingrediente.productos.forEach(producto => {
-            respuesta += `• ${producto.descripcion} - ${producto.marca || 'Sin marca'} (${producto.cantidadPresentacion || 'Cantidad no especificada'})\n`;
-          });
-        } else {
-          respuesta += `• No se encontraron productos para este ingrediente\n`;
-        }
-        respuesta += '\n';
-      });
-      
-      respuesta += '💡 **Tip:** Estos son algunos productos disponibles que podrías usar para esta receta.';
-    } else {
-      respuesta += 'No se encontraron productos para los ingredientes de esta receta. 🤔';
-    }
-
-    return respuesta;
   };
 
   const copyToClipboard = async (text, messageId) => {
@@ -403,7 +357,6 @@ const ChatBotComponent = ({ currentUser }) => {
       } else if (line.match(/^\d+\. /)) {
         return <div key={index} className="message-step">{line}</div>;
       } else if (line.includes('**')) {
-        // Texto con negritas
         const parts = line.split('**');
         return (
           <p key={index}>
@@ -426,7 +379,6 @@ const ChatBotComponent = ({ currentUser }) => {
 
   return (
     <div className={`chatbot-container ${isExpanded ? 'expanded' : ''}`}>
-      {/* Botón flotante */}
       {!isOpen && !isMinimized && (
         <button
           className="chatbot-toggle-btn"
@@ -438,7 +390,6 @@ const ChatBotComponent = ({ currentUser }) => {
         </button>
       )}
 
-      {/* Chat minimizado */}
       {isMinimized && (
         <div className="chatbot-minimized">
           <button className="minimized-header" onClick={toggleChat}>
@@ -449,10 +400,8 @@ const ChatBotComponent = ({ currentUser }) => {
         </div>
       )}
 
-      {/* Ventana del chat */}
       {isOpen && (
         <div className={`chatbot-window ${isExpanded ? 'expanded' : ''}`}>
-          {/* Header */}
           <div className="chatbot-header">
             <div className="chatbot-header-content">
               <div className="chatbot-avatar">
@@ -462,7 +411,9 @@ const ChatBotComponent = ({ currentUser }) => {
                 <h5>Asistente de Recetas</h5>
                 <div className="status-indicator">
                   <div className="status-dot"></div>
-                  <span>En línea</span>
+                  <span>
+                    {isStreaming ? "Escribiendo receta..." : "En línea"}
+                  </span>
                 </div>
               </div>
             </div>
@@ -491,12 +442,25 @@ const ChatBotComponent = ({ currentUser }) => {
             </div>
           </div>
 
-          {/* Mensajes */}
+          {isStreaming && (
+            <div className="streaming-progress">
+              <div className="progress-bar">
+                <div 
+                  className="progress-fill" 
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+              <span className="progress-text">{progress}%</span>
+            </div>
+          )}
+
           <div className="chatbot-messages">
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`message ${message.isBot ? "bot-message" : "user-message"}`}
+                className={`message ${message.isBot ? "bot-message" : "user-message"} ${
+                  message.type === 'streaming' ? 'streaming-message' : ''
+                }`}
               >
                 <div className="message-avatar">
                   {message.isBot ? <FaRobot /> : <FaUser />}
@@ -505,8 +469,11 @@ const ChatBotComponent = ({ currentUser }) => {
                   <div className="message-bubble">
                     <div className="message-text">
                       {formatMessageText(message.text)}
+                      {message.type === 'streaming' && (
+                        <span className="typing-cursor">|</span>
+                      )}
                     </div>
-                    {message.isBot && message.text.length > 100 && (
+                    {message.isBot && message.type === 'text' && message.text.length > 100 && (
                       <button
                         className="copy-btn"
                         onClick={() => copyToClipboard(message.text, message.id)}
@@ -528,14 +495,14 @@ const ChatBotComponent = ({ currentUser }) => {
               </div>
             ))}
             
-            {isLoading && (
+            {(isLoading && !isStreaming) && (
               <div className="message bot-message">
                 <div className="message-avatar">
                   <FaRobot />
                 </div>
                 <div className="message-content">
                   <div className="message-bubble typing-indicator">
-                    <span>Escribiendo</span>
+                    <span>Procesando</span>
                     <div className="typing-dots">
                       <span></span>
                       <span></span>
@@ -548,7 +515,6 @@ const ChatBotComponent = ({ currentUser }) => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
           <div className="chatbot-input">
             <form onSubmit={handleSendMessage} className="chatbot-input-form">
               <div className="input-group">
@@ -559,19 +525,27 @@ const ChatBotComponent = ({ currentUser }) => {
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  disabled={isLoading}
+                  disabled={isLoading || isStreaming}
                   rows={1}
                 />
                 <button
                   type="submit"
                   className="btn-send"
-                  disabled={isLoading || !inputMessage.trim()}
+                  disabled={isLoading || isStreaming || !inputMessage.trim()}
                 >
-                  <FaPaperPlane />
+                  {(isLoading || isStreaming) ? <FaSpinner className="spinner" /> : <FaPaperPlane />}
                 </button>
               </div>
-              <div className="input-suggestions">
-                <small>Presiona Enter para enviar, Shift+Enter para nueva línea</small>
+                <div className="input-suggestions">
+                  {isStreaming ? (
+                    // OPCIÓN 1: Mostrar SOLO el estado de generación cuando el streaming está activo
+                    <small className="streaming-notice">
+                      <FaSpinner className="spinner" /> Generando receta...
+                    </small>
+                  ) : (
+                    // OPCIÓN 2: Mostrar SOLO la instrucción permanente cuando el chat está listo para usarse
+                    <small>Presiona **Enter** para enviar, **Shift+Enter** para nueva línea</small>
+                  )}
               </div>
             </form>
           </div>

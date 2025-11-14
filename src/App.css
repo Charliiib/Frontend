@@ -936,3 +936,28 @@ body.modal-open {
     border: 1px solid #dee2e6;
 }
 
+.streaming-message {
+  position: relative;
+}
+
+.typing-cursor {
+  animation: blink 1s infinite;
+  color: #007bff;
+  font-weight: bold;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.streaming-message .message-bubble {
+  background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+  border-left: 3px solid #007bff;
+}
+
+.message-text {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
