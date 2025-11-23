@@ -136,6 +136,7 @@ const ChatBotComponent = ({ currentUser }) => {
       method: 'GET',
       headers: {
         'Accept': 'text/event-stream',
+        'Authorization': `Bearer ${token}`,
       },
     });
 
