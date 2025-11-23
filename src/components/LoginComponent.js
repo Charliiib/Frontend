@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Modal, Form, Button, Alert, Spinner } from 'react-bootstrap';
-import { FaSignInAlt, FaEnvelope, FaLock } from 'react-icons/fa'; // Importamos íconos
+import { FaSignInAlt, FaEnvelope, FaLock } from 'react-icons/fa';
 
 export const LoginComponent = ({ onLoginSuccess, onClose }) => {
   const [email, setEmail] = useState('');
@@ -17,27 +17,23 @@ export const LoginComponent = ({ onLoginSuccess, onClose }) => {
     try {
       console.log('Intentando login con:', { email, password });
       
-      const response = await axios.post(`${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/auth/login', {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL || "http://localhost:8080"}/api/auth/login`, {
         email: email,
         password: password
-      }`);
+      });
       
       console.log('✅ Respuesta del servidor:', response.data);
       
       const token = response.data.token;
       const userFromBackend = response.data.user;
       
-      console.log('👤 Usuario del backend:', userFromBackend);
-      
-      // ADAPTAR la estructura del usuario para que coincida con lo que espera el frontend
+      // ✅ Mapeo CORRECTO según tu backend
       const adaptedUser = {
-        idUsuario: userFromBackend.id, 
-        nombreUsuario: userFromBackend.nombre, 
-        apellidoUsuario: userFromBackend.apellido, 
-        emailUsuario: userFromBackend.email 
+        idUsuario: userFromBackend.idUsuario,
+        nombreUsuario: userFromBackend.nombreUsuario, 
+        apellidoUsuario: userFromBackend.apellidoUsuario, 
+        emailUsuario: userFromBackend.emailUsuario 
       };
-      
-      console.log('👤 Usuario adaptado:', adaptedUser);
       
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(adaptedUser));
@@ -46,15 +42,17 @@ export const LoginComponent = ({ onLoginSuccess, onClose }) => {
       onClose();
 
     } catch (error) {
-      console.error('❌ Error de login:', error.response ? error.response.data : error.message);
-      setError(error.response?.data?.message || 'Error al iniciar sesión. Verifica tus credenciales.');
+      console.error('❌ Error completo:', error);
+      console.error('❌ Response data:', error.response?.data);
+      console.error('❌ Response status:', error.response?.status);
+      
+      setError(error.response?.data || 'Error al iniciar sesión. Verifica tus credenciales.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    // USANDO EL COMPONENTE MODAL DE REACT-BOOTSTRAP
     <Modal show={true} onHide={onClose} centered> 
       <Modal.Header closeButton className="border-0 pb-0">
         <Modal.Title className="fw-bold text-primary">
