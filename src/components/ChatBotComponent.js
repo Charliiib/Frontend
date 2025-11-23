@@ -144,17 +144,6 @@ const ChatBotComponent = ({ currentUser }) => {
       const encodedMessage = encodeURIComponent(mensajeUsuario);
       let url = `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/chatbot/consulta-stream?mensaje=${encodedMessage}`;
 
-          // ✅ OBTENER TOKEN DEL LOCALSTORAGE
-    const token = localStorage.getItem('token');
-    console.log('🔑 Token obtenido:', token ? 'Sí' : 'No');
-
-    // ✅ AGREGAR TOKEN COMO PARÁMETRO DE QUERY (alternativa más fácil para SSE)
-    if (token) {
-      url += `&token=${encodeURIComponent(token)}`;
-    }
-
-    console.log('🔗 URL final:', url);
-
       eventSourceRef.current = new EventSource(url);
 
       eventSourceRef.current.onopen = () => {
