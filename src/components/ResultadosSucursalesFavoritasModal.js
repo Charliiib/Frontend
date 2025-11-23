@@ -16,7 +16,8 @@ import {
   FaTimes,
   FaShoppingCart,
   FaCrown,
-  FaExclamationTriangle
+  FaImage,
+  FaChartLine
 } from "react-icons/fa";
 
 const ResultadosSucursalesFavoritasModal = ({
@@ -30,6 +31,7 @@ const ResultadosSucursalesFavoritasModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [sucursalMasBarata, setSucursalMasBarata] = useState(null);
+  const [preciosPromedio, setPreciosPromedio] = useState({});
 
   useEffect(() => {
     if (show && lista) {
@@ -38,8 +40,43 @@ const ResultadosSucursalesFavoritasModal = ({
   }, [show, lista]);
 
   useEffect(() => {
-    calcularSucursalMasBarata();
+    if (Object.keys(resultados).length > 0) {
+      calcularPreciosPromedio();
+      calcularSucursalMasBarata();
+    }
   }, [resultados]);
+
+  // Calcular precios promedio para productos sin stock
+  const calcularPreciosPromedio = () => {
+    const promedios = {};
+    
+    if (!lista || !lista.productos) return;
+
+    // Para cada producto en la lista
+    lista.productos.forEach(producto => {
+      const preciosEncontrados = [];
+      
+      // Recolectar todos los precios de este producto en todas las sucursales
+      Object.values(resultados).forEach(resultado => {
+        if (!resultado.loading) {
+          const itemProducto = resultado.productos.find(p => 
+            p.producto.idProducto === producto.idProducto && p.precio
+          );
+          if (itemProducto && itemProducto.precio) {
+            preciosEncontrados.push(itemProducto.precio);
+          }
+        }
+      });
+
+      // Si hay precios encontrados, calcular promedio
+      if (preciosEncontrados.length > 0) {
+        const suma = preciosEncontrados.reduce((total, precio) => total + precio, 0);
+        promedios[producto.idProducto] = Math.round(suma / preciosEncontrados.length);
+      }
+    });
+
+    setPreciosPromedio(promedios);
+  };
 
   const cargarSucursalesFavoritas = async () => {
     if (!currentUser) return;
@@ -59,7 +96,7 @@ const ResultadosSucursalesFavoritasModal = ({
       if (response.ok) {
         const data = await response.json();
         setSucursalesFavoritas(data);
-        buscarPreciosEnSucursales(data);
+        buscarPreciosPorComercio(data);
       } else {
         setError("Error al cargar sucursales favoritas");
       }
@@ -69,7 +106,7 @@ const ResultadosSucursalesFavoritasModal = ({
     }
   };
 
-  const buscarPreciosEnSucursales = async (sucursales) => {
+  const buscarPreciosPorComercio = async (sucursales) => {
     if (!lista || !lista.productos) return;
 
     setLoading(true);
@@ -84,65 +121,44 @@ const ResultadosSucursalesFavoritasModal = ({
           productos: [],
           loading: true,
         };
-const productosPromises = lista.productos.map(async (producto) => {
-  try {
-    const token = localStorage.getItem("token");
-    let precioEncontrado = null;
-    let esRespaldo = false;
-    let esMismaSucursal = false;
 
-    // PRIMERO: Intentar con el endpoint normal (sucursal específica)
-    const responseNormal = await fetch(
-      `http://localhost:8080/api/productos/precios?id_producto=${producto.idProducto}&id_comercio=${sucursal.idComercio}&id_bandera=${sucursal.idBandera}&id_sucursal=${sucursal.idSucursal}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+        const productosPromises = lista.productos.map(async (producto) => {
+          try {
+            const token = localStorage.getItem("token");
+            let precioEncontrado = null;
+            let esPrecioReal = false;
 
-    if (responseNormal.ok) {
-      const data = await responseNormal.json();
-      precioEncontrado = data[0]?.productos_precio_lista || null;
-      esMismaSucursal = true; // Este precio SÍ es de esta sucursal específica
-    }
+            // USAR DIRECTAMENTE EL ENDPOINT DE RESPALDO (que busca por comercio)
+            const response = await fetch(
+              `http://localhost:8080/api/productos/precios-con-respaldo?id_producto=${producto.idProducto}&id_comercio=${sucursal.idComercio}&id_bandera=${sucursal.idBandera}&id_sucursal=${sucursal.idSucursal}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            );
 
-    // SEGUNDO: Si no se encontró precio en la sucursal, usar el respaldo
-    if (!precioEncontrado) {
-      const responseRespaldo = await fetch(
-        `http://localhost:8080/api/productos/precios-con-respaldo?id_producto=${producto.idProducto}&id_comercio=${sucursal.idComercio}&id_bandera=${sucursal.idBandera}&id_sucursal=${sucursal.idSucursal}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+            if (response.ok) {
+              const data = await response.json();
+              precioEncontrado = data[0]?.productos_precio_lista || null;
+              esPrecioReal = precioEncontrado !== null;
+            }
 
-      if (responseRespaldo.ok) {
-        const dataRespaldo = await responseRespaldo.json();
-        precioEncontrado = dataRespaldo[0]?.productos_precio_lista || null;
-        esRespaldo = precioEncontrado !== null;
-        // NOTA: Los precios de respaldo son del MISMO comercio/bandera pero POSIBLEMENTE de otra sucursal
-      }
-    }
-
-    return {
-      producto: producto,
-      precio: precioEncontrado,
-      error: null,
-      esRespaldo: esRespaldo,
-      esMismaSucursal: esMismaSucursal,
-    };
-  } catch (error) {
-    return {
-      producto: producto,
-      precio: null,
-      error: "Error al obtener precio",
-      esRespaldo: false,
-      esMismaSucursal: false,
-    };
-  }
-});
+            return {
+              producto: producto,
+              precio: precioEncontrado,
+              esPrecioReal: esPrecioReal,
+              error: null,
+            };
+          } catch (error) {
+            return {
+              producto: producto,
+              precio: null,
+              esPrecioReal: false,
+              error: "Error al obtener precio",
+            };
+          }
+        });
 
         const productosResultados = await Promise.all(productosPromises);
         resultadosPorSucursal[sucursal.idSucursal] = {
@@ -160,18 +176,33 @@ const productosPromises = lista.productos.map(async (producto) => {
     }
   };
 
+  // Calcular total incluyendo precios promedio para productos sin stock
   const calcularTotalSucursal = (productos) => {
     return productos.reduce((total, item) => {
-      return total + (item.precio || 0);
+      if (item.precio) {
+        return total + item.precio;
+      } else if (preciosPromedio[item.producto.idProducto]) {
+        // Usar precio promedio si no hay precio real
+        return total + preciosPromedio[item.producto.idProducto];
+      }
+      return total;
     }, 0);
   };
 
-  const productosConPrecioSucursal = (productos) => {
-    return productos.filter((item) => item.precio).length;
+  const productosConPrecioReal = (productos) => {
+    return productos.filter((item) => item.precio && item.esPrecioReal).length;
   };
 
-  const productosConRespaldo = (productos) => {
-    return productos.filter((item) => item.precio && item.esRespaldo).length;
+  const productosConPrecioPromedio = (productos) => {
+    return productos.filter((item) => 
+      !item.precio && preciosPromedio[item.producto.idProducto]
+    ).length;
+  };
+
+  const productosSinPrecio = (productos) => {
+    return productos.filter((item) => 
+      !item.precio && !preciosPromedio[item.producto.idProducto]
+    ).length;
   };
 
   const calcularSucursalMasBarata = () => {
@@ -186,7 +217,7 @@ const productosPromises = lista.productos.map(async (producto) => {
     Object.values(resultados).forEach(resultado => {
       if (!resultado.loading) {
         const total = calcularTotalSucursal(resultado.productos);
-        const conPrecio = productosConPrecioSucursal(resultado.productos);
+        const conPrecio = productosConPrecioReal(resultado.productos) + productosConPrecioPromedio(resultado.productos);
         if (conPrecio > 0 && total < menorTotal) {
           menorTotal = total;
           sucursalMasBarataId = resultado.sucursal.idSucursal;
@@ -199,6 +230,22 @@ const productosPromises = lista.productos.map(async (producto) => {
 
   const esSucursalMasBarata = (sucursalId) => {
     return sucursalMasBarata === sucursalId;
+  };
+
+  // Obtener el precio a mostrar (real o promedio)
+  const getPrecioAMostrar = (item) => {
+    if (item.precio) {
+      return {
+        precio: item.precio,
+        esReal: true
+      };
+    } else if (preciosPromedio[item.producto.idProducto]) {
+      return {
+        precio: preciosPromedio[item.producto.idProducto],
+        esReal: false
+      };
+    }
+    return null;
   };
 
   return (
@@ -237,7 +284,7 @@ const productosPromises = lista.productos.map(async (producto) => {
           <div className="text-center py-5">
             <Spinner animation="border" variant="primary" />
             <p className="text-muted mt-2">
-              Buscando precios en sucursales favoritas...
+              Buscando precios en comercios favoritos...
             </p>
           </div>
         ) : (
@@ -247,9 +294,9 @@ const productosPromises = lista.productos.map(async (producto) => {
                 const resultado = resultados[sucursal.idSucursal];
                 const productos = resultado?.productos || [];
                 const total = calcularTotalSucursal(productos);
-                const conPrecio = productosConPrecioSucursal(productos);
-                const conRespaldo = productosConRespaldo(productos);
-                const sinPrecio = productos.length - conPrecio;
+                const conPrecioReal = productosConPrecioReal(productos);
+                const conPrecioPromedio = productosConPrecioPromedio(productos);
+                const sinPrecio = productosSinPrecio(productos);
                 const esMasBarata = esSucursalMasBarata(sucursal.idSucursal);
 
                 return (
@@ -311,25 +358,25 @@ const productosPromises = lista.productos.map(async (producto) => {
                               <div className={`fw-bold ${esMasBarata ? 'text-warning' : 'text-primary'}`}>
                                 ${total.toFixed(0)}
                               </div>
-                              <small>Total</small>
+                              <small>Total estimado</small>
                             </div>
                             <div className="col-3">
                               <div className="fw-bold text-success">
-                                {conPrecio - conRespaldo}
+                                {conPrecioReal}
                               </div>
-                              <small>En stock</small>
+                              <small>Sucursal</small>
                             </div>
                             <div className="col-3">
                               <div className="fw-bold text-info">
-                                {conRespaldo}
+                                {conPrecioPromedio}
                               </div>
-                              <small>Con respaldo</small>
+                              <small>Comercio</small>
                             </div>
                             <div className="col-3">
                               <div className="fw-bold text-warning">
                                 {sinPrecio}
                               </div>
-                              <small>Sin stock</small>
+                              <small>Sin datos</small>
                             </div>
                           </div>
                         </div>
@@ -350,39 +397,82 @@ const productosPromises = lista.productos.map(async (producto) => {
                               <small className="d-block mt-1">Cargando...</small>
                             </div>
                           ) : (
-                            productos.map((item, index) => (
-                              <div key={index} className="border-bottom p-2">
-                                <div className="d-flex justify-content-between align-items-center">
-                                  <div className="flex-grow-1">
-                                    <h6 className="mb-1 small fw-semibold">
-                                      {item.producto.descripcion}
-                                    </h6>
-                                    {item.producto.marca &&
-                                      item.producto.marca !== "Sin marca" && (
-                                        <small className="text-muted">
-                                          {item.producto.marca}
-                                        </small>
-                                      )}
-                                  </div>
-                                  <div className="text-end">
-                                    {item.precio ? (
-                                      <Badge 
-                                        bg={item.esRespaldo ? "info" : "success"} 
-                                        className="fs-6"
-                                        title={item.esRespaldo ? "Precio de respaldo (no confirmado en esta sucursal)" : "Precio confirmado en sucursal"}
+                            productos.map((item, index) => {
+                              const precioAMostrar = getPrecioAMostrar(item);
+                              
+                              return (
+                                <div key={index} className="border-bottom p-2">
+                                  <div className="d-flex align-items-start">
+                                    {/* Imagen del producto */}
+                                    <div className="me-2 flex-shrink-0">
+                                      <img
+                                        src={`https://imagenes.preciosclaros.gob.ar/productos/${item.producto.idProducto}.jpg`}
+                                        alt={item.producto.descripcion}
+                                        style={{
+                                          width: "40px",
+                                          height: "40px",
+                                          objectFit: "cover",
+                                          borderRadius: "4px",
+                                        }}
+                                        onError={(e) => {
+                                          e.target.style.display = "none";
+                                          e.target.nextSibling.style.display = "flex";
+                                        }}
+                                      />
+                                      <div 
+                                        className="d-none align-items-center justify-content-center bg-light rounded"
+                                        style={{
+                                          width: "40px",
+                                          height: "40px",
+                                        }}
                                       >
-                                        ${item.precio.toFixed(0)}
-                                        {item.esRespaldo && <FaExclamationTriangle className="ms-1" />}
-                                      </Badge>
-                                    ) : (
-                                      <Badge bg="warning" text="dark">
-                                        Sin stock
-                                      </Badge>
-                                    )}
+                                        <FaImage className="text-muted" size={16} />
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="flex-grow-1">
+                                      <div className="d-flex justify-content-between align-items-start">
+                                        <div className="flex-grow-1 me-2">
+                                          <h6 className="mb-1 small fw-semibold">
+                                            {item.producto.descripcion}
+                                          </h6>
+                                          {item.producto.marca &&
+                                            item.producto.marca !== "Sin marca" && (
+                                              <small className="text-muted">
+                                                {item.producto.marca}
+                                              </small>
+                                            )}
+                                        </div>
+                                        <div className="text-end flex-shrink-0">
+                                          {precioAMostrar ? (
+                                            <div>
+                                              <Badge 
+                                                bg={precioAMostrar.esReal ? "success" : "info"} 
+                                                className="fs-6"
+                                              >
+                                                ${precioAMostrar.precio.toFixed(0)}
+                                                {!precioAMostrar.esReal && <FaChartLine className="ms-1" />}
+                                              </Badge>
+                                              {!precioAMostrar.esReal && (
+                                                <div>
+                                                  <small className="text-muted">
+                                                    Otra sucursal
+                                                  </small>
+                                                </div>
+                                              )}
+                                            </div>
+                                          ) : (
+                                            <Badge bg="warning" text="dark">
+                                              Sin stock
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))
+                              );
+                            })
                           )}
                         </div>
                       </Card.Body>
@@ -392,16 +482,25 @@ const productosPromises = lista.productos.map(async (producto) => {
               })}
             </Row>
 
-            {/* Leyenda de precios con respaldo */}
+            {/* Leyenda explicativa */}
             <Row className="mt-3">
               <Col>
                 <Alert variant="light" className="border-0 small">
-                  <div className="d-flex align-items-center">
-                    <FaExclamationTriangle className="text-info me-2" />
-                    <span>
-                      Los precios marcados con <Badge bg="info" className="ms-1 me-1">!</Badge> 
-                      son de respaldo, de otra sucursal, y pueden no estar disponibles en esta sucursal específica
-                    </span>
+                  <div className="row text-center">
+                    <div className="col-4">
+                      <Badge bg="success" className="me-1">$</Badge>
+                      <span>Precio en stock</span>
+                    </div>
+                    <div className="col-4">
+                      <Badge bg="info" className="me-1">
+                        $<FaChartLine className="ms-1" />
+                      </Badge>
+                      <span>Precio tomado de otra sucursal</span>
+                    </div>
+                    <div className="col-4">
+                      <Badge bg="warning" text="dark" className="me-1">Sin stock</Badge>
+                      <span>Sin información disponible</span>
+                    </div>
                   </div>
                 </Alert>
               </Col>
