@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import api from "../api";
 import {
   FaRobot,
   FaUser,
@@ -26,7 +25,6 @@ const ChatBotComponent = ({ currentUser }) => {
 
   const messagesEndRef = useRef(null);
   const textAreaRef = useRef(null);
-  const eventSourceRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -58,32 +56,20 @@ const ChatBotComponent = ({ currentUser }) => {
     }
   }, [inputMessage]);
 
-  useEffect(() => {
-    return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
-    };
-  }, []);
-
   const toggleChat = () => {
     console.log("toggleChat - Estado actual:", { isOpen, isMinimized });
     
     if (isMinimized) {
-      // Si está minimizado, restaurar a abierto
       setIsMinimized(false);
       setIsOpen(true);
     } else if (isOpen) {
-      // Si está abierto, cerrar completamente
       setIsOpen(false);
       setIsMinimized(false);
     } else {
-      // Si está cerrado, abrir
       setIsOpen(true);
       setIsMinimized(false);
     }
     
-    // Cerrar expansión al cambiar estado
     if (isExpanded) {
       setIsExpanded(false);
     }
@@ -121,129 +107,148 @@ const ChatBotComponent = ({ currentUser }) => {
     const currentMessage = inputMessage;
     setInputMessage("");
 
-    // Llamamos siempre al streaming para el efecto de escritura
     await generarRecetaConStreaming(currentMessage);
   };
 
-const generarRecetaConStreaming = async (mensajeUsuario) => {
-  setIsLoading(true);
-  setIsStreaming(true);
-  setProgress(0);
+  const generarRecetaConStreaming = async (mensajeUsuario) => {
+    setIsLoading(true);
+    setIsStreaming(true);
+    setProgress(0);
 
-  // Mensaje de loading
-  const loadingMessage = {
-    id: Date.now() + 2,
-    text: "🤖 Analizando tu consulta y generando receta...",
-    isBot: true,
-    timestamp: new Date(),
-    type: "loading",
-  };
-  setMessages((prev) => [...prev, loadingMessage]);
-
-  try {
-    const encodedMessage = encodeURIComponent(mensajeUsuario);
-    let url = `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/chatbot/consulta-stream?mensaje=${encodedMessage}`;
-
-    console.log('🔗 URL:', url);
-
-    // ✅ USAR FETCH EN LUGAR DE EVENTSOURCE
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'text/event-stream',
-        'Accept': 'text/event-stream'
-      },
-      credentials: 'include'
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    if (!response.body) {
-      throw new Error('ReadableStream not supported');
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-
-    // Crear mensaje de streaming
-    const streamingMessage = {
-      id: Date.now() + 3,
-      text: '',
+    const loadingMessage = {
+      id: Date.now() + 2,
+      text: "🤖 Analizando tu consulta y generando receta...",
       isBot: true,
       timestamp: new Date(),
-      type: 'streaming',
+      type: "loading",
     };
-    setMessages((prev) => {
-      const filteredMessages = prev.filter((msg) => msg.type !== 'loading');
-      return [...filteredMessages, streamingMessage];
-    });
+    setMessages((prev) => [...prev, loadingMessage]);
 
-    // Leer el stream
-    while (true) {
-      const { done, value } = await reader.read();
+    try {
+      const encodedMessage = encodeURIComponent(mensajeUsuario);
+      const token = localStorage.getItem('token');
       
-      if (done) {
-        console.log('✅ Stream completado');
-        handleStreamComplete();
-        break;
+      let url = `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/chatbot/consulta-stream?mensaje=${encodedMessage}`;
+
+      console.log('🔗 URL:', url);
+      console.log('🔑 Token:', token ? 'Presente' : 'No presente');
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'text/event-stream',
+        },
+      });
+
+      console.log('📡 Response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('No autorizado - token inválido o expirado');
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const chunk = decoder.decode(value, { stream: true });
-      console.log('📨 Chunk recibido:', chunk);
+      if (!response.body) {
+        throw new Error('ReadableStream not supported');
+      }
 
-      // Procesar cada línea del SSE
-      const lines = chunk.split('\n');
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.substring(6));
-            handleStreamEvent(data);
-          } catch (error) {
-            console.error('Error parsing SSE data:', error);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      // Remover mensaje de loading y crear streaming
+      setMessages((prev) => {
+        const filteredMessages = prev.filter((msg) => msg.type !== 'loading');
+        return [
+          ...filteredMessages,
+          {
+            id: Date.now() + 3,
+            text: '',
+            isBot: true,
+            timestamp: new Date(),
+            type: 'streaming',
+          }
+        ];
+      });
+
+      let buffer = '';
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) {
+          console.log('✅ Stream completado');
+          handleStreamComplete();
+          break;
+        }
+
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
+
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Guardar línea incompleta para el próximo chunk
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.substring(6));
+              console.log('📨 Evento SSE:', data);
+              handleStreamEvent(data);
+            } catch (error) {
+              console.error('❌ Error parsing SSE data:', error, 'Line:', line);
+            }
           }
         }
       }
+
+    } catch (error) {
+      console.error('❌ Error en streaming:', error);
+      handleStreamError(error.message);
     }
+  };
 
-  } catch (error) {
-    console.error('Error en streaming:', error);
-    handleStreamError();
-  }
-};
+  const handleStreamEvent = (data) => {
+    console.log("📨 Evento recibido:", data);
 
-  // Función para manejar errores de servicio específicos
-  const handleServiceError = (data) => {
-    console.log("🔴 Error de servicio recibido:", data);
-    
-    setIsLoading(false);
-    setIsStreaming(false);
-    setProgress(0);
+    switch (data.type) {
+      case "inicio":
+      case "empezando":
+        console.log("🔄 Actualizando mensaje de estado:", data.data);
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.type === "loading"
+              ? { ...msg, text: data.data, type: "text" }
+              : msg
+          )
+        );
+        break;
 
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
+      case "receta":
+        if (data.linea !== undefined && data.linea !== null) {
+          console.log("📝 Procesando fragmento de receta:", {
+            linea: data.linea,
+            progreso: data.progreso,
+          });
+          handleRecipeLine(data);
+        } else {
+          console.warn("⚠️ Fragmento de receta vacío o undefined:", data);
+        }
+        break;
+
+      case "completo":
+        console.log("✅ Streaming completado");
+        handleStreamComplete();
+        break;
+
+      case "error":
+        console.log("❌ Error en streaming");
+        handleStreamError(data.data || "Error del servidor");
+        break;
+
+      default:
+        console.log("❓ Tipo de evento no manejado:", data.type);
     }
-
-    setMessages((prev) => {
-      // Filtramos mensajes de 'loading' y 'streaming' antes de añadir el error
-      const filteredMessages = prev.filter(
-        (msg) => msg.type !== "loading" && msg.type !== "streaming"
-      );
-
-      return [
-        ...filteredMessages,
-        {
-          id: Date.now() + 4,
-          text: data.data || "❌ Lo sentimos, estamos experimentando una alta demanda en este momento. Por favor, vuelve a probar en unos minutos. 🕒",
-          isBot: true,
-          timestamp: new Date(),
-          type: "text",
-        },
-      ];
-    });
   };
 
   const handleRecipeLine = (data) => {
@@ -254,17 +259,14 @@ const generarRecetaConStreaming = async (mensajeUsuario) => {
     }
 
     setMessages((prev) => {
-      // Buscar mensaje de streaming existente
       const existingStreamingIndex = prev.findIndex(
         (msg) => msg.type === "streaming"
       );
 
       if (existingStreamingIndex !== -1) {
-        // Actualizar mensaje existente - CONCATENAR FRAGMENTO
         const updatedMessages = [...prev];
         const existingMessage = updatedMessages[existingStreamingIndex];
 
-        // MODIFICACIÓN: Asegurar que concatenamos correctamente
         const newText = existingMessage.text + (linea || '');
 
         console.log("🔄 Actualizando mensaje streaming:", {
@@ -281,7 +283,6 @@ const generarRecetaConStreaming = async (mensajeUsuario) => {
 
         return updatedMessages;
       } else {
-        // Crear nuevo mensaje de streaming
         console.log("🆕 Creando nuevo mensaje streaming con fragmento:", linea);
         
         const newMessage = {
@@ -292,7 +293,6 @@ const generarRecetaConStreaming = async (mensajeUsuario) => {
           type: "streaming",
         };
 
-        // Remover mensaje de loading si existe
         const filteredMessages = prev.filter((msg) => msg.type !== "loading");
         return [...filteredMessages, newMessage];
       }
@@ -304,11 +304,6 @@ const generarRecetaConStreaming = async (mensajeUsuario) => {
     setIsStreaming(false);
     setProgress(100);
 
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
-
     setMessages((prev) =>
       prev.map((msg) =>
         msg.type === "streaming" ? { ...msg, type: "text" } : msg
@@ -316,38 +311,40 @@ const generarRecetaConStreaming = async (mensajeUsuario) => {
     );
   };
 
-  const handleStreamError = () => {
-    console.log("🔴 Error de streaming - cerrando conexión");
+  const handleStreamError = (errorMessage = "Error al generar la receta") => {
+    console.log("🔴 Error de streaming:", errorMessage);
     
     setIsLoading(false);
     setIsStreaming(false);
     setProgress(0);
 
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
-
-    // Solo agregar mensaje de error si no hay mensajes de streaming
     setMessages((prev) => {
       const hasStreaming = prev.some(msg => msg.type === "streaming");
       const hasLoading = prev.some(msg => msg.type === "loading");
       
       if (!hasStreaming && !hasLoading) {
-        // Solo mostrar error si no hay contenido
-        const errorId = Date.now() + 4;
         return [
           ...prev,
           {
-            id: errorId,
-            text: "❌ Lo siento, hubo un error al generar la receta. Por favor, intenta de nuevo.",
+            id: Date.now() + 4,
+            text: `❌ ${errorMessage}. Por favor, intenta de nuevo.`,
             isBot: true,
             timestamp: new Date(),
             type: "text",
           },
         ];
       }
-      return prev;
+      
+      // Si hay mensaje de streaming, convertirlo a error
+      return prev.map(msg => 
+        msg.type === "streaming" || msg.type === "loading" 
+          ? { 
+              ...msg, 
+              text: `❌ ${errorMessage}`,
+              type: "text" 
+            }
+          : msg
+      );
     });
   };
 
@@ -369,16 +366,11 @@ const generarRecetaConStreaming = async (mensajeUsuario) => {
   };
 
   const formatMessageText = (text) => {
-    // Función auxiliar para convertir \n a <br /> de forma segura
     const processPlaintext = (t) => {
-      // Si el texto es nulo o vacío, devolver un fragmento vacío
-      if (!t) return null; 
-
-      // Dividir el texto por \n y mapear a elementos, inyectando <br />
+      if (!t) return null;
       return t.split('\n').map((part, i) => (
         <span key={i}>
           {part}
-          {/* Agrega <br /> solo si no es la última parte */}
           {i < t.split('\n').length - 1 && <br />}
         </span>
       ));
@@ -415,7 +407,6 @@ const generarRecetaConStreaming = async (mensajeUsuario) => {
       } else if (line.trim() === "") {
         return <br key={index} />;
       } else if (line.match(/^\d+\. /)) {
-        // Las líneas de pasos (1., 2., 3.)
         const stepContent = line.replace(/^\d+\. /, '');
         return (
           <div key={index} className="message-step">
@@ -435,7 +426,6 @@ const generarRecetaConStreaming = async (mensajeUsuario) => {
         );
       }
       
-      // Fallback final para cualquier línea de texto plano
       return <p key={index}>{processPlaintext(line)}</p>;
     });
   };
@@ -543,15 +533,7 @@ const generarRecetaConStreaming = async (mensajeUsuario) => {
                 <div className="message-content">
                   <div className="message-bubble">
                     <div className="message-text">
-                      {message.text.includes("<span class='dot-animation'>") ? (
-                        <div
-                          dangerouslySetInnerHTML={{ __html: message.text }}
-                        />
-                      ) : (
-                        // Para todos los demás mensajes (recetas, texto de usuario, etc.), usamos el formateador seguro
-                        formatMessageText(message.text)
-                      )}
-
+                      {formatMessageText(message.text)}
                       {message.type === "streaming" && (
                         <span className="typing-cursor">|</span>
                       )}
