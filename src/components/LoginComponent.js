@@ -9,48 +9,59 @@ export const LoginComponent = ({ onLoginSuccess, onClose }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError('');
+  setLoading(true);
 
-    try {
-      console.log('Intentando login con:', { email, password });
-      
-      const response = await axios.post(`${process.env.REACT_APP_API_URL || "http://localhost:8080"}/api/auth/login`, {
-        email: email,
-        password: password
-      });
-      
-      console.log('✅ Respuesta del servidor:', response.data);
-      
-      const token = response.data.token;
-      const userFromBackend = response.data.user;
-      
-      // ✅ Mapeo CORRECTO según tu backend
-      const adaptedUser = {
-        idUsuario: userFromBackend.idUsuario,
-        nombreUsuario: userFromBackend.nombreUsuario, 
-        apellidoUsuario: userFromBackend.apellidoUsuario, 
-        emailUsuario: userFromBackend.emailUsuario 
-      };
-      
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(adaptedUser));
+  try {
+    console.log('Intentando login con:', { email, password });
+    
+    const response = await axios.post(
+      `${process.env.REACT_APP_API_URL || "http://localhost:8080"}/api/auth/login`, 
+      {
+        email: email,        // ✅ Esto está BIEN (coincide con LoginRequest)
+        password: password   // ✅ Esto está BIEN (coincide con LoginRequest)
+      },
+      {
+        withCredentials: true
+      }
+    );
+    
+    console.log('✅ Respuesta del servidor:', response.data);
+    
+    const token = response.data.token;
+    const userFromBackend = response.data.user;
+    
+    // ✅ Mapeo CORREGIDO - usar los nombres exactos del backend
+    const adaptedUser = {
+      idUsuario: userFromBackend.idUsuario,
+      nombreUsuario: userFromBackend.nombreUsuario, 
+      apellidoUsuario: userFromBackend.apellidoUsuario, 
+      emailUsuario: userFromBackend.emailUsuario 
+    };
+    
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(adaptedUser));
 
-      onLoginSuccess(adaptedUser);
-      onClose();
+    onLoginSuccess(adaptedUser);
+    onClose();
 
-    } catch (error) {
-      console.error('❌ Error completo:', error);
-      console.error('❌ Response data:', error.response?.data);
-      console.error('❌ Response status:', error.response?.status);
-      
-      setError(error.response?.data || 'Error al iniciar sesión. Verifica tus credenciales.');
-    } finally {
-      setLoading(false);
+  } catch (error) {
+    console.error('❌ Error completo:', error);
+    console.error('❌ Response data:', error.response?.data);
+    console.error('❌ Response status:', error.response?.status);
+    
+    // Mejorar el mensaje de error
+    if (error.response?.status === 401) {
+      setError('Credenciales incorrectas. Verifica tu email y contraseña.');
+    } else {
+      setError(error.response?.data || 'Error al iniciar sesión. Intenta nuevamente.');
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <Modal show={true} onHide={onClose} centered> 
