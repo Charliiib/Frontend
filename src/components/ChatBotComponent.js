@@ -131,15 +131,13 @@ const ChatBotComponent = ({ currentUser }) => {
       let url = `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/chatbot/consulta-stream?mensaje=${encodedMessage}`;
 
       console.log('🔗 URL:', url);
-      console.log('🔑 Token:', token ? 'Presente' : 'No presente');
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'text/event-stream',
-        },
-      });
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'text/event-stream',
+      },
+    });
 
       console.log('📡 Response status:', response.status, response.statusText);
 
