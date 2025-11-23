@@ -2,6 +2,11 @@ import React from 'react';
 import { FaSignOutAlt, FaUserCircle } from 'react-icons/fa'; 
 
 const LoginMessage = ({ currentUser, onLogout }) => {
+  // 🔍 AGREGAR LOGS PARA DEBUG
+  console.log('🔍 currentUser en LoginMessage:', currentUser);
+  console.log('🔍 nombreUsuario:', currentUser.nombreUsuario);
+  console.log('🔍 apellidoUsuario:', currentUser.apellidoUsuario);
+  console.log('🔍 emailUsuario:', currentUser.emailUsuario);
 
   const getUserName = () => {
     if (currentUser.nombreUsuario) {

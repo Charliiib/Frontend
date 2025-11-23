@@ -35,10 +35,10 @@ export const LoginComponent = ({ onLoginSuccess, onClose }) => {
     
     // ✅ Mapeo CORREGIDO - usar los nombres exactos del backend
     const adaptedUser = {
-      idUsuario: userFromBackend.idUsuario,
-      nombreUsuario: userFromBackend.nombreUsuario, 
-      apellidoUsuario: userFromBackend.apellidoUsuario, 
-      emailUsuario: userFromBackend.emailUsuario 
+       idUsuario: userFromBackend.id,
+      nombreUsuario: userFromBackend.nombre, 
+      apellidoUsuario: userFromBackend.apellido, 
+      emailUsuario: userFromBackend.email 
     };
     
     localStorage.setItem('token', token);
