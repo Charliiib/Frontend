@@ -142,7 +142,7 @@ const ChatBotComponent = ({ currentUser }) => {
 
     try {
       const encodedMessage = encodeURIComponent(mensajeUsuario);
-      let url = `http://localhost:8080/api/chatbot/consulta-stream?mensaje=${encodedMessage}`;
+      let url = `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/chatbot/consulta-stream?mensaje=${encodedMessage}`;
 
       eventSourceRef.current = new EventSource(url);
 

@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+// URL base dinámica para producción/desarrollo
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  baseURL: `${BASE_URL}/api`,
 });
 
 api.isCancel = axios.isCancel;
@@ -15,7 +18,6 @@ api.interceptors.request.use(config => {
   return config;
 });
 
-
 api.interceptors.response.use(
   (response) => {
     console.log('Respuesta recibida:', response.status, response.config.url);
@@ -27,5 +29,5 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-export default api
 
+export default api;
