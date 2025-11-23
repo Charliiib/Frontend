@@ -125,159 +125,94 @@ const ChatBotComponent = ({ currentUser }) => {
     await generarRecetaConStreaming(currentMessage);
   };
 
-  const generarRecetaConStreaming = async (mensajeUsuario) => {
-    setIsLoading(true);
-    setIsStreaming(true);
-    setProgress(0);
+const generarRecetaConStreaming = async (mensajeUsuario) => {
+  setIsLoading(true);
+  setIsStreaming(true);
+  setProgress(0);
 
-    // Creamos el mensaje de "cargando" antes de iniciar el stream
-    const loadingMessage = {
-      id: Date.now() + 2,
-      text: "🤖 Analizando tu consulta y generando receta...",
+  // Mensaje de loading
+  const loadingMessage = {
+    id: Date.now() + 2,
+    text: "🤖 Analizando tu consulta y generando receta...",
+    isBot: true,
+    timestamp: new Date(),
+    type: "loading",
+  };
+  setMessages((prev) => [...prev, loadingMessage]);
+
+  try {
+    const encodedMessage = encodeURIComponent(mensajeUsuario);
+    let url = `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/chatbot/consulta-stream?mensaje=${encodedMessage}`;
+
+    console.log('🔗 URL:', url);
+
+    // ✅ USAR FETCH EN LUGAR DE EVENTSOURCE
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'text/event-stream',
+        'Accept': 'text/event-stream'
+      },
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    if (!response.body) {
+      throw new Error('ReadableStream not supported');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    // Crear mensaje de streaming
+    const streamingMessage = {
+      id: Date.now() + 3,
+      text: '',
       isBot: true,
       timestamp: new Date(),
-      type: "loading",
+      type: 'streaming',
     };
-    setMessages((prev) => [...prev, loadingMessage]);
+    setMessages((prev) => {
+      const filteredMessages = prev.filter((msg) => msg.type !== 'loading');
+      return [...filteredMessages, streamingMessage];
+    });
 
-    try {
-      const encodedMessage = encodeURIComponent(mensajeUsuario);
-      let url = `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/chatbot/consulta-stream?mensaje=${encodedMessage}`;
-
-
-          // ✅ AGREGAR TOKEN COMO QUERY PARAM
-    const token = localStorage.getItem('token');
-    if (token) {
-      url += `&token=${encodeURIComponent(token)}`;
-    }
-
-    console.log('🔗 URL con token:', url);
-
-      eventSourceRef.current = new EventSource(url);
-
-      eventSourceRef.current.onopen = () => {
-        console.log("Conexión SSE establecida");
-      };
-
-      eventSourceRef.current.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log("Evento recibido:", data);
-          handleStreamEvent(data);
-        } catch (error) {
-          console.error("Error parsing SSE data:", error);
-        }
-      };
-
-      eventSourceRef.current.addEventListener("inicio", (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log("Evento inicio:", data);
-          handleStreamEvent(data);
-        } catch (error) {
-          console.error("Error parsing inicio event:", error);
-        }
-      });
-
-      eventSourceRef.current.addEventListener("receta", (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log("Evento receta:", data);
-          handleStreamEvent(data);
-        } catch (error) {
-          console.error("Error parsing receta event:", error);
-        }
-      });
-
-      eventSourceRef.current.addEventListener("completo", (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log("Evento completo:", data);
-          handleStreamEvent(data);
-        } catch (error) {
-          console.error("Error parsing completo event:", error);
-        }
-      });
-
-      // Event listener para errores de servicio
-      eventSourceRef.current.addEventListener("service_error", (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log("Evento service_error:", data);
-          handleServiceError(data);
-        } catch (error) {
-          console.error("Error parsing service_error event:", error);
-        }
-      });
-
-      eventSourceRef.current.addEventListener("error", (event) => {
-        if (event.data) {
-          try {
-            const data = JSON.parse(event.data);
-            console.log("Evento error:", data);
-            handleStreamEvent(data);
-          } catch (error) {
-            console.error("Error parsing error event:", error);
-          }
-        } else {
-          handleStreamError();
-        }
-      });
-
-      eventSourceRef.current.onerror = (error) => {
-        console.error("SSE Error:", error);
-        handleStreamError();
-      };
-    } catch (error) {
-      console.error("Error al iniciar streaming:", error);
-      handleStreamError();
-    }
-  };
-
-  const handleStreamEvent = (data) => {
-    console.log("📨 Evento recibido:", data);
-
-    switch (data.type) {
-      case "inicio":
-      case "empezando":
-        console.log("🔄 Actualizando mensaje de estado:", data.data);
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.type === "loading"
-              ? { ...msg, text: data.data, type: "text" }
-              : msg
-          )
-        );
-        break;
-
-      case "receta":
-        if (data.linea !== undefined && data.linea !== null) {
-          console.log("📝 Procesando fragmento de receta:", {
-            linea: data.linea,
-            progreso: data.progreso,
-            indice: data.indice,
-            total: data.total
-          });
-          handleRecipeLine(data);
-        } else {
-          console.warn("⚠️ Fragmento de receta vacío o undefined:", data);
-        }
-        break;
-
-      case "completo":
-        console.log("✅ Streaming completado");
+    // Leer el stream
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) {
+        console.log('✅ Stream completado');
         handleStreamComplete();
         break;
+      }
 
-      case "error":
-        console.log("❌ Error en streaming");
-        handleStreamError();
-        break;
+      const chunk = decoder.decode(value, { stream: true });
+      console.log('📨 Chunk recibido:', chunk);
 
-      default:
-        console.log("❓ Tipo de evento no manejado:", data.type);
+      // Procesar cada línea del SSE
+      const lines = chunk.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.substring(6));
+            handleStreamEvent(data);
+          } catch (error) {
+            console.error('Error parsing SSE data:', error);
+          }
+        }
+      }
     }
-  };
+
+  } catch (error) {
+    console.error('Error en streaming:', error);
+    handleStreamError();
+  }
+};
 
   // Función para manejar errores de servicio específicos
   const handleServiceError = (data) => {
