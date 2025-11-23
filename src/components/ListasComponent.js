@@ -60,7 +60,7 @@ const ListasComponent = ({ currentUser }) => {
         }
 
         const response = await axios.get(
-          `http://localhost:8080/api/listas/usuario/${userId}`,
+          `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/listas/usuario/${userId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -87,7 +87,7 @@ const ListasComponent = ({ currentUser }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(
-        `http://localhost:8080/api/listas/usuario/${currentUser.idUsuario}`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/listas/usuario/${currentUser.idUsuario}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -108,7 +108,7 @@ const ListasComponent = ({ currentUser }) => {
         nombreLista: nuevaListaNombre,
       };
 
-      await axios.post("http://localhost:8080/api/listas", nuevaLista, {
+      await axios.post("${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/listas", nuevaLista, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -123,7 +123,7 @@ const ListasComponent = ({ currentUser }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(
-        `http://localhost:8080/api/listas/${idLista}/productos`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/listas/${idLista}/productos`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -156,7 +156,7 @@ const ListasComponent = ({ currentUser }) => {
     try {
       const token = localStorage.getItem("token");
       await axios.delete(
-        `http://localhost:8080/api/listas/${idLista}/productos/${idProducto}`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/listas/${idLista}/productos/${idProducto}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -195,7 +195,7 @@ const ListasComponent = ({ currentUser }) => {
       };
 
       const response = await axios.put(
-        `http://localhost:8080/api/listas/${idLista}`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/listas/${idLista}`,
         listaActualizada,
         {
           headers: {
@@ -238,7 +238,7 @@ const ListasComponent = ({ currentUser }) => {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:8080/api/listas/${idLista}`, {
+      await axios.delete(`${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/listas/${idLista}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -264,7 +264,7 @@ const ListasComponent = ({ currentUser }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(
-        `http://localhost:8080/api/listas/${lista.idListas}/productos`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/listas/${lista.idListas}/productos`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }

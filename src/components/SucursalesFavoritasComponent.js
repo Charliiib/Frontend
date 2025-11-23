@@ -21,7 +21,7 @@ const SucursalesFavoritasComponent = ({ currentUser }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:8080/api/sucursales-favoritas/usuario/${currentUser.idUsuario}`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/sucursales-favoritas/usuario/${currentUser.idUsuario}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -55,7 +55,7 @@ const SucursalesFavoritasComponent = ({ currentUser }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:8080/api/sucursales-favoritas/eliminar`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/sucursales-favoritas/eliminar`,
         {
           method: "DELETE",
           headers: {

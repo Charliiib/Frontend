@@ -42,7 +42,7 @@ const RegisterComponent = ({ onRegisterSuccess, onClose, onShowLogin }) => {
     }
 
     try {
-      const response = await axios.post('http://localhost:8080/api/auth/register', {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/auth/register`, {
         nombre: formData.nombre,
         apellido: formData.apellido,
         email: formData.email,

@@ -20,7 +20,7 @@ const SearchComponent = ({ onProductSelect, currentUser }) => {
         try {
           const token = localStorage.getItem('token');
           const response = await axios.get(
-            `http://localhost:8080/api/listas/usuario/${currentUser.idUsuario}`, 
+            `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/listas/usuario/${currentUser.idUsuario}`, 
             {
               headers: { 
                 Authorization: `Bearer ${token}`,
@@ -105,7 +105,7 @@ const SearchComponent = ({ onProductSelect, currentUser }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        `http://localhost:8080/api/listas/${idLista}/productos/${selectedProduct.idProducto}`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/listas/${idLista}/productos/${selectedProduct.idProducto}`,
         {},
         {
           headers: { 
@@ -119,7 +119,7 @@ const SearchComponent = ({ onProductSelect, currentUser }) => {
       
       // Recargar listas para actualizar contadores
       const listasResponse = await axios.get(
-        `http://localhost:8080/api/listas/usuario/${currentUser.idUsuario}`, 
+        `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/listas/usuario/${currentUser.idUsuario}`, 
         {
           headers: { 
             Authorization: `Bearer ${token}`,

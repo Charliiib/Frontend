@@ -69,7 +69,7 @@ export const ResultsComponent = ({
       if (currentUser) {
         try {
           const token = localStorage.getItem('token');
-          const response = await fetch(`http://localhost:8080/api/sucursales-favoritas/usuario/${currentUser.idUsuario}`, {
+          const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/sucursales-favoritas/usuario/${currentUser.idUsuario}`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -103,7 +103,7 @@ export const ResultsComponent = ({
         
         if (esFavorita) {
             // Eliminar de favoritos
-            const response = await fetch(`http://localhost:8080/api/sucursales-favoritas/eliminar`, {
+            const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/sucursales-favoritas/eliminar`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -122,7 +122,7 @@ export const ResultsComponent = ({
             }
         } else {
             // Agregar a favoritos
-            const response = await fetch(`http://localhost:8080/api/sucursales-favoritas/agregar`, {
+            const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/sucursales-favoritas/agregar`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

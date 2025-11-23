@@ -17,10 +17,10 @@ export const LoginComponent = ({ onLoginSuccess, onClose }) => {
     try {
       console.log('Intentando login con:', { email, password });
       
-      const response = await axios.post('http://localhost:8080/api/auth/login', {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/auth/login', {
         email: email,
         password: password
-      });
+      }`);
       
       console.log('✅ Respuesta del servidor:', response.data);
       
