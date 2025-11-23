@@ -144,6 +144,15 @@ const ChatBotComponent = ({ currentUser }) => {
       const encodedMessage = encodeURIComponent(mensajeUsuario);
       let url = `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/chatbot/consulta-stream?mensaje=${encodedMessage}`;
 
+
+          // ✅ AGREGAR TOKEN COMO QUERY PARAM
+    const token = localStorage.getItem('token');
+    if (token) {
+      url += `&token=${encodeURIComponent(token)}`;
+    }
+
+    console.log('🔗 URL con token:', url);
+
       eventSourceRef.current = new EventSource(url);
 
       eventSourceRef.current.onopen = () => {
