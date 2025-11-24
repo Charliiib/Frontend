@@ -66,6 +66,22 @@ const ChatBotComponent = ({ currentUser }) => {
     };
   }, []);
 
+  // 🔧 FUNCIÓN AUXILIAR PARA OBTENER URL DEL BACKEND
+  const getBackendUrl = () => {
+    // 1. Variable de entorno configurada (PRIORIDAD MÁXIMA)
+    if (process.env.REACT_APP_API_URL) {
+      return process.env.REACT_APP_API_URL;
+    }
+    
+    // 2. URL de Railway en producción
+    if (window.location.hostname.includes('vercel.app')) {
+      return 'https://backend-production-4d5a.up.railway.app';
+    }
+    
+    // 3. Fallback local
+    return 'http://localhost:8080';
+  };
+
   const toggleChat = () => {
     console.log("toggleChat - Estado actual:", { isOpen, isMinimized });
     
@@ -142,63 +158,81 @@ const ChatBotComponent = ({ currentUser }) => {
 
     try {
       const encodedMessage = encodeURIComponent(mensajeUsuario);
-      // ✅ CAMBIO PARA RAILWAY: URL actualizada
-      let url = `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/chatbot/consulta-stream?mensaje=${encodedMessage}`;
+      
+      // ✅ URL CONFIGURACIÓN MEJORADA
+      const backendUrl = getBackendUrl();
+      const url = `${backendUrl}/api/chatbot/consulta-stream?mensaje=${encodedMessage}`;
+      
+      console.log("🌐 Conectando a:", url);
 
-      eventSourceRef.current = new EventSource(url);
+      // Cerrar conexión anterior si existe
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+
+      eventSourceRef.current = new EventSource(url, {
+        withCredentials: false
+      });
 
       eventSourceRef.current.onopen = () => {
-        console.log("Conexión SSE establecida");
+        console.log("✅ Conexión SSE establecida correctamente");
       };
 
       eventSourceRef.current.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log("Evento recibido:", data);
+          console.log("📨 Evento recibido (onmessage):", data);
           handleStreamEvent(data);
         } catch (error) {
-          console.error("Error parsing SSE data:", error);
+          console.error("❌ Error parsing SSE data:", error);
+          // En caso de error de parsing, mostrar contenido raw si existe
+          if (event.data) {
+            console.log("📄 Datos raw recibidos:", event.data);
+          }
         }
       };
 
+      // Event listeners específicos
       eventSourceRef.current.addEventListener("inicio", (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log("Evento inicio:", data);
+          console.log("🎬 Evento inicio:", data);
           handleStreamEvent(data);
         } catch (error) {
-          console.error("Error parsing inicio event:", error);
+          console.error("❌ Error parsing inicio event:", error);
         }
       });
 
       eventSourceRef.current.addEventListener("receta", (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log("Evento receta:", data);
+          console.log("📝 Evento receta:", data);
           handleStreamEvent(data);
         } catch (error) {
-          console.error("Error parsing receta event:", error);
+          console.error("❌ Error parsing receta event:", error);
         }
       });
 
       eventSourceRef.current.addEventListener("completo", (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log("Evento completo:", data);
+          console.log("✅ Evento completo:", data);
           handleStreamEvent(data);
         } catch (error) {
-          console.error("Error parsing completo event:", error);
+          console.error("❌ Error parsing completo event:", error);
         }
       });
 
-      // Event listener para errores de servicio
+      // Event listener para errores de servicio específicos
       eventSourceRef.current.addEventListener("service_error", (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log("Evento service_error:", data);
+          console.log("🔴 Evento service_error:", data);
           handleServiceError(data);
         } catch (error) {
-          console.error("Error parsing service_error event:", error);
+          console.error("❌ Error parsing service_error event:", error);
+          // Si hay error de parsing, usar datos raw
+          handleServiceError({ data: event.data || "Error de servicio" });
         }
       });
 
@@ -206,28 +240,46 @@ const ChatBotComponent = ({ currentUser }) => {
         if (event.data) {
           try {
             const data = JSON.parse(event.data);
-            console.log("Evento error:", data);
+            console.log("❌ Evento error (con datos):", data);
             handleStreamEvent(data);
-          } catch (error) {
-            console.error("Error parsing error event:", error);
+          } catch (parseError) {
+            console.error("❌ Error parsing error event:", parseError);
+            console.log("📄 Error raw data:", event.data);
+            handleStreamError("Error en la conexión: " + event.data);
           }
         } else {
-          handleStreamError();
+          console.log("❌ Evento error (sin datos específicos)");
+          handleStreamError("Error de conexión con el servidor");
         }
       });
 
       eventSourceRef.current.onerror = (error) => {
-        console.error("SSE Error:", error);
-        handleStreamError();
+        console.error("🚨 SSE Error:", error);
+        console.error("📊 EventSource readyState:", eventSourceRef.current?.readyState);
+        
+        if (eventSourceRef.current?.readyState === EventSource.CLOSED) {
+          handleStreamError("Conexión cerrada por el servidor");
+        } else {
+          handleStreamError("Error de conexión SSE");
+        }
       };
+
+      // 🔒 TIMEOUT DE SEGURIDAD (3 minutos)
+      setTimeout(() => {
+        if (eventSourceRef.current && isStreaming) {
+          console.log("⏰ Timeout de streaming - cerrando conexión");
+          handleStreamError("Timeout: El proceso tardó demasiado");
+        }
+      }, 180000); // 3 minutos
+
     } catch (error) {
-      console.error("Error al iniciar streaming:", error);
-      handleStreamError();
+      console.error("❌ Error al iniciar streaming:", error);
+      handleStreamError("No se pudo iniciar la conexión con el servidor");
     }
   };
 
   const handleStreamEvent = (data) => {
-    console.log("📨 Evento recibido:", data);
+    console.log("📨 Procesando evento:", data);
 
     switch (data.type) {
       case "inicio":
@@ -263,7 +315,7 @@ const ChatBotComponent = ({ currentUser }) => {
 
       case "error":
         console.log("❌ Error en streaming");
-        handleStreamError();
+        handleStreamError("Error del servidor: " + (data.data || "Error desconocido"));
         break;
 
       default:
@@ -373,7 +425,7 @@ const ChatBotComponent = ({ currentUser }) => {
     );
   };
 
-  const handleStreamError = () => {
+  const handleStreamError = (customMessage = null) => {
     console.log("🔴 Error de streaming - cerrando conexión");
     
     setIsLoading(false);
@@ -397,7 +449,7 @@ const ChatBotComponent = ({ currentUser }) => {
           ...prev,
           {
             id: errorId,
-            text: "❌ Lo siento, hubo un error al generar la receta. Por favor, intenta de nuevo.",
+            text: customMessage || "❌ Lo siento, hubo un error al generar la receta. Por favor, intenta de nuevo.",
             isBot: true,
             timestamp: new Date(),
             type: "text",
