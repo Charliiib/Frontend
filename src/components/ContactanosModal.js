@@ -55,9 +55,7 @@ const ContactanosModal = ({ show, onClose }) => {
         EMAILJS_CONFIG.PUBLIC_KEY
       );
 
-      console.log('✅ Email al admin enviado:', adminResult);
-
-      // Enviar email de confirmación al USUARIO
+           // Enviar email de confirmación al USUARIO
       const userResult = await emailjs.send(
         EMAILJS_CONFIG.SERVICE_ID,
         EMAILJS_CONFIG.TEMPLATE_ID_USER,
@@ -65,8 +63,7 @@ const ContactanosModal = ({ show, onClose }) => {
         EMAILJS_CONFIG.PUBLIC_KEY
       );
 
-      console.log('✅ Email al usuario enviado:', userResult);
-      
+           
       setShowAlert(true);
       setTimeout(() => {
         setShowAlert(false);
