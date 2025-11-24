@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import api from "../api";
 import {
   FaRobot,
   FaUser,
@@ -25,6 +26,7 @@ const ChatBotComponent = ({ currentUser }) => {
 
   const messagesEndRef = useRef(null);
   const textAreaRef = useRef(null);
+  const eventSourceRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -56,20 +58,32 @@ const ChatBotComponent = ({ currentUser }) => {
     }
   }, [inputMessage]);
 
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+    };
+  }, []);
+
   const toggleChat = () => {
     console.log("toggleChat - Estado actual:", { isOpen, isMinimized });
     
     if (isMinimized) {
+      // Si está minimizado, restaurar a abierto
       setIsMinimized(false);
       setIsOpen(true);
     } else if (isOpen) {
+      // Si está abierto, cerrar completamente
       setIsOpen(false);
       setIsMinimized(false);
     } else {
+      // Si está cerrado, abrir
       setIsOpen(true);
       setIsMinimized(false);
     }
     
+    // Cerrar expansión al cambiar estado
     if (isExpanded) {
       setIsExpanded(false);
     }
@@ -107,6 +121,7 @@ const ChatBotComponent = ({ currentUser }) => {
     const currentMessage = inputMessage;
     setInputMessage("");
 
+    // Llamamos siempre al streaming para el efecto de escritura
     await generarRecetaConStreaming(currentMessage);
   };
 
@@ -115,6 +130,7 @@ const ChatBotComponent = ({ currentUser }) => {
     setIsStreaming(true);
     setProgress(0);
 
+    // Creamos el mensaje de "cargando" antes de iniciar el stream
     const loadingMessage = {
       id: Date.now() + 2,
       text: "🤖 Analizando tu consulta y generando receta...",
@@ -126,85 +142,87 @@ const ChatBotComponent = ({ currentUser }) => {
 
     try {
       const encodedMessage = encodeURIComponent(mensajeUsuario);
-      const token = localStorage.getItem('token');
-      
-      let url = `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/chatbot/consulta-stream?mensaje=${encodedMessage}`;
+      // ✅ CAMBIO PARA RAILWAY: URL actualizada
+      let url = `https://backend-production-4d5a.up.railway.app/api/chatbot/consulta-stream?mensaje=${encodedMessage}`;
 
-      console.log('🔗 URL:', url);
+      eventSourceRef.current = new EventSource(url);
 
-          const headers = {
-            'Accept': 'text/event-stream',
-          };
+      eventSourceRef.current.onopen = () => {
+        console.log("Conexión SSE establecida");
+      };
 
-          const response = await fetch(url, {
-            method: 'GET',
-            headers: headers,
-          });
-
-      console.log('📡 Response status:', response.status, response.statusText);
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('No autorizado - token inválido o expirado');
+      eventSourceRef.current.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("Evento recibido:", data);
+          handleStreamEvent(data);
+        } catch (error) {
+          console.error("Error parsing SSE data:", error);
         }
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      };
 
-      if (!response.body) {
-        throw new Error('ReadableStream not supported');
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-
-      // Remover mensaje de loading y crear streaming
-      setMessages((prev) => {
-        const filteredMessages = prev.filter((msg) => msg.type !== 'loading');
-        return [
-          ...filteredMessages,
-          {
-            id: Date.now() + 3,
-            text: '',
-            isBot: true,
-            timestamp: new Date(),
-            type: 'streaming',
-          }
-        ];
+      eventSourceRef.current.addEventListener("inicio", (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("Evento inicio:", data);
+          handleStreamEvent(data);
+        } catch (error) {
+          console.error("Error parsing inicio event:", error);
+        }
       });
 
-      let buffer = '';
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        
-        if (done) {
-          console.log('✅ Stream completado');
-          handleStreamComplete();
-          break;
+      eventSourceRef.current.addEventListener("receta", (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("Evento receta:", data);
+          handleStreamEvent(data);
+        } catch (error) {
+          console.error("Error parsing receta event:", error);
         }
+      });
 
-        const chunk = decoder.decode(value, { stream: true });
-        buffer += chunk;
+      eventSourceRef.current.addEventListener("completo", (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("Evento completo:", data);
+          handleStreamEvent(data);
+        } catch (error) {
+          console.error("Error parsing completo event:", error);
+        }
+      });
 
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Guardar línea incompleta para el próximo chunk
+      // Event listener para errores de servicio
+      eventSourceRef.current.addEventListener("service_error", (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("Evento service_error:", data);
+          handleServiceError(data);
+        } catch (error) {
+          console.error("Error parsing service_error event:", error);
+        }
+      });
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.substring(6));
-              console.log('📨 Evento SSE:', data);
-              handleStreamEvent(data);
-            } catch (error) {
-              console.error('❌ Error parsing SSE data:', error, 'Line:', line);
-            }
+      eventSourceRef.current.addEventListener("error", (event) => {
+        if (event.data) {
+          try {
+            const data = JSON.parse(event.data);
+            console.log("Evento error:", data);
+            handleStreamEvent(data);
+          } catch (error) {
+            console.error("Error parsing error event:", error);
           }
+        } else {
+          handleStreamError();
         }
-      }
+      });
 
+      eventSourceRef.current.onerror = (error) => {
+        console.error("SSE Error:", error);
+        handleStreamError();
+      };
     } catch (error) {
-      console.error('❌ Error en streaming:', error);
-      handleStreamError(error.message);
+      console.error("Error al iniciar streaming:", error);
+      handleStreamError();
     }
   };
 
@@ -229,6 +247,8 @@ const ChatBotComponent = ({ currentUser }) => {
           console.log("📝 Procesando fragmento de receta:", {
             linea: data.linea,
             progreso: data.progreso,
+            indice: data.indice,
+            total: data.total
           });
           handleRecipeLine(data);
         } else {
@@ -243,12 +263,44 @@ const ChatBotComponent = ({ currentUser }) => {
 
       case "error":
         console.log("❌ Error en streaming");
-        handleStreamError(data.data || "Error del servidor");
+        handleStreamError();
         break;
 
       default:
         console.log("❓ Tipo de evento no manejado:", data.type);
     }
+  };
+
+  // Función para manejar errores de servicio específicos
+  const handleServiceError = (data) => {
+    console.log("🔴 Error de servicio recibido:", data);
+    
+    setIsLoading(false);
+    setIsStreaming(false);
+    setProgress(0);
+
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
+    setMessages((prev) => {
+      // Filtramos mensajes de 'loading' y 'streaming' antes de añadir el error
+      const filteredMessages = prev.filter(
+        (msg) => msg.type !== "loading" && msg.type !== "streaming"
+      );
+
+      return [
+        ...filteredMessages,
+        {
+          id: Date.now() + 4,
+          text: data.data || "❌ Lo sentimos, estamos experimentando una alta demanda en este momento. Por favor, vuelve a probar en unos minutos. 🕒",
+          isBot: true,
+          timestamp: new Date(),
+          type: "text",
+        },
+      ];
+    });
   };
 
   const handleRecipeLine = (data) => {
@@ -259,14 +311,17 @@ const ChatBotComponent = ({ currentUser }) => {
     }
 
     setMessages((prev) => {
+      // Buscar mensaje de streaming existente
       const existingStreamingIndex = prev.findIndex(
         (msg) => msg.type === "streaming"
       );
 
       if (existingStreamingIndex !== -1) {
+        // Actualizar mensaje existente - CONCATENAR FRAGMENTO
         const updatedMessages = [...prev];
         const existingMessage = updatedMessages[existingStreamingIndex];
 
+        // MODIFICACIÓN: Asegurar que concatenamos correctamente
         const newText = existingMessage.text + (linea || '');
 
         console.log("🔄 Actualizando mensaje streaming:", {
@@ -283,6 +338,7 @@ const ChatBotComponent = ({ currentUser }) => {
 
         return updatedMessages;
       } else {
+        // Crear nuevo mensaje de streaming
         console.log("🆕 Creando nuevo mensaje streaming con fragmento:", linea);
         
         const newMessage = {
@@ -293,6 +349,7 @@ const ChatBotComponent = ({ currentUser }) => {
           type: "streaming",
         };
 
+        // Remover mensaje de loading si existe
         const filteredMessages = prev.filter((msg) => msg.type !== "loading");
         return [...filteredMessages, newMessage];
       }
@@ -304,6 +361,11 @@ const ChatBotComponent = ({ currentUser }) => {
     setIsStreaming(false);
     setProgress(100);
 
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
     setMessages((prev) =>
       prev.map((msg) =>
         msg.type === "streaming" ? { ...msg, type: "text" } : msg
@@ -311,40 +373,38 @@ const ChatBotComponent = ({ currentUser }) => {
     );
   };
 
-  const handleStreamError = (errorMessage = "Error al generar la receta") => {
-    console.log("🔴 Error de streaming:", errorMessage);
+  const handleStreamError = () => {
+    console.log("🔴 Error de streaming - cerrando conexión");
     
     setIsLoading(false);
     setIsStreaming(false);
     setProgress(0);
 
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
+    // Solo agregar mensaje de error si no hay mensajes de streaming
     setMessages((prev) => {
       const hasStreaming = prev.some(msg => msg.type === "streaming");
       const hasLoading = prev.some(msg => msg.type === "loading");
       
       if (!hasStreaming && !hasLoading) {
+        // Solo mostrar error si no hay contenido
+        const errorId = Date.now() + 4;
         return [
           ...prev,
           {
-            id: Date.now() + 4,
-            text: `❌ ${errorMessage}. Por favor, intenta de nuevo.`,
+            id: errorId,
+            text: "❌ Lo siento, hubo un error al generar la receta. Por favor, intenta de nuevo.",
             isBot: true,
             timestamp: new Date(),
             type: "text",
           },
         ];
       }
-      
-      // Si hay mensaje de streaming, convertirlo a error
-      return prev.map(msg => 
-        msg.type === "streaming" || msg.type === "loading" 
-          ? { 
-              ...msg, 
-              text: `❌ ${errorMessage}`,
-              type: "text" 
-            }
-          : msg
-      );
+      return prev;
     });
   };
 
@@ -366,11 +426,16 @@ const ChatBotComponent = ({ currentUser }) => {
   };
 
   const formatMessageText = (text) => {
+    // Función auxiliar para convertir \n a <br /> de forma segura
     const processPlaintext = (t) => {
-      if (!t) return null;
+      // Si el texto es nulo o vacío, devolver un fragmento vacío
+      if (!t) return null; 
+
+      // Dividir el texto por \n y mapear a elementos, inyectando <br />
       return t.split('\n').map((part, i) => (
         <span key={i}>
           {part}
+          {/* Agrega <br /> solo si no es la última parte */}
           {i < t.split('\n').length - 1 && <br />}
         </span>
       ));
@@ -407,6 +472,7 @@ const ChatBotComponent = ({ currentUser }) => {
       } else if (line.trim() === "") {
         return <br key={index} />;
       } else if (line.match(/^\d+\. /)) {
+        // Las líneas de pasos (1., 2., 3.)
         const stepContent = line.replace(/^\d+\. /, '');
         return (
           <div key={index} className="message-step">
@@ -426,6 +492,7 @@ const ChatBotComponent = ({ currentUser }) => {
         );
       }
       
+      // Fallback final para cualquier línea de texto plano
       return <p key={index}>{processPlaintext(line)}</p>;
     });
   };
@@ -533,7 +600,15 @@ const ChatBotComponent = ({ currentUser }) => {
                 <div className="message-content">
                   <div className="message-bubble">
                     <div className="message-text">
-                      {formatMessageText(message.text)}
+                      {message.text.includes("<span class='dot-animation'>") ? (
+                        <div
+                          dangerouslySetInnerHTML={{ __html: message.text }}
+                        />
+                      ) : (
+                        // Para todos los demás mensajes (recetas, texto de usuario, etc.), usamos el formateador seguro
+                        formatMessageText(message.text)
+                      )}
+
                       {message.type === "streaming" && (
                         <span className="typing-cursor">|</span>
                       )}
