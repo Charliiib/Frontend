@@ -143,7 +143,7 @@ const ChatBotComponent = ({ currentUser }) => {
     try {
       const encodedMessage = encodeURIComponent(mensajeUsuario);
       // ✅ CAMBIO PARA RAILWAY: URL actualizada
-      let url = `https://backend-production-4d5a.up.railway.app/api/chatbot/consulta-stream?mensaje=${encodedMessage}`;
+      let url = `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/chatbot/consulta-stream?mensaje=${encodedMessage}`;
 
       eventSourceRef.current = new EventSource(url);
 
