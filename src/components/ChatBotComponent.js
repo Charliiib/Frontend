@@ -66,40 +66,41 @@ const ChatBotComponent = ({ currentUser }) => {
     };
   }, []);
 
-  // 🔧 FUNCIÓN AUXILIAR PARA OBTENER URL DEL BACKEND
+  // 🔧 FUNCIÓN MEJORADA PARA RAILWAY
   const getBackendUrl = () => {
-    // 1. Variable de entorno configurada (PRIORIDAD MÁXIMA)
+    // 1. Variable de entorno (PRIORIDAD MÁXIMA)
     if (process.env.REACT_APP_API_URL) {
+      console.log("🌐 Usando REACT_APP_API_URL:", process.env.REACT_APP_API_URL);
       return process.env.REACT_APP_API_URL;
     }
     
-    // 2. URL de Railway en producción
+    // 2. Railway en producción
     if (window.location.hostname.includes('vercel.app')) {
-      return 'https://backend-production-4d5a.up.railway.app';
+      const railwayUrl = 'https://backend-production-4d5a.up.railway.app';
+      console.log("🌐 Usando Railway URL:", railwayUrl);
+      return railwayUrl;
     }
     
     // 3. Fallback local
-    return 'http://localhost:8080';
+    const localUrl = 'http://localhost:8080';
+    console.log("🌐 Usando Local URL:", localUrl);
+    return localUrl;
   };
 
   const toggleChat = () => {
     console.log("toggleChat - Estado actual:", { isOpen, isMinimized });
     
     if (isMinimized) {
-      // Si está minimizado, restaurar a abierto
       setIsMinimized(false);
       setIsOpen(true);
     } else if (isOpen) {
-      // Si está abierto, cerrar completamente
       setIsOpen(false);
       setIsMinimized(false);
     } else {
-      // Si está cerrado, abrir
       setIsOpen(true);
       setIsMinimized(false);
     }
     
-    // Cerrar expansión al cambiar estado
     if (isExpanded) {
       setIsExpanded(false);
     }
@@ -137,174 +138,118 @@ const ChatBotComponent = ({ currentUser }) => {
     const currentMessage = inputMessage;
     setInputMessage("");
 
-    // Llamamos siempre al streaming para el efecto de escritura
     await generarRecetaConStreaming(currentMessage);
   };
 
+  // 🔥 FUNCIÓN STREAMING OPTIMIZADA PARA RAILWAY
   const generarRecetaConStreaming = async (mensajeUsuario) => {
     setIsLoading(true);
     setIsStreaming(true);
     setProgress(0);
 
-    // Creamos el mensaje de "cargando" antes de iniciar el stream
     const loadingMessage = {
       id: Date.now() + 2,
-      text: "🤖 Analizando tu consulta y generando receta...",
+      text: "🤖 Conectando con servidor Railway...",
       isBot: true,
       timestamp: new Date(),
       type: "loading",
     };
     setMessages((prev) => [...prev, loadingMessage]);
 
-    let reconnectAttempts = 0;
-  const maxReconnectAttempts = 1;
-
     try {
       const encodedMessage = encodeURIComponent(mensajeUsuario);
-      
-      // ✅ URL CONFIGURACIÓN MEJORADA
       const backendUrl = getBackendUrl();
       const url = `${backendUrl}/api/chatbot/consulta-stream?mensaje=${encodedMessage}`;
       
-      console.log("🌐 Conectando a:", url);
+      console.log("🌐 Conectando SSE a Railway:", url);
 
-      // Cerrar conexión anterior si existe
+      // Cerrar conexión anterior
       if (eventSourceRef.current) {
+        console.log("🔒 Cerrando conexión SSE anterior");
         eventSourceRef.current.close();
       }
 
+      // 🔥 CONFIGURACIÓN ESPECÍFICA PARA RAILWAY
       eventSourceRef.current = new EventSource(url, {
-        withCredentials: false
+        withCredentials: false // 🔥 IMPORTANTE para Railway
       });
 
-      eventSourceRef.current.onopen = () => {
-        console.log("✅ Conexión SSE establecida correctamente");
-      };
-
-      eventSourceRef.current.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log("📨 Evento recibido (onmessage):", data);
-          handleStreamEvent(data);
-        } catch (error) {
-          console.error("❌ Error parsing SSE data:", error);
-          // En caso de error de parsing, mostrar contenido raw si existe
-          if (event.data) {
-            console.log("📄 Datos raw recibidos:", event.data);
-          }
-        }
-      };
-
-      eventSourceRef.current.addEventListener("heartbeat", (event) => {
-    try {
-        const data = JSON.parse(event.data);
-        console.log("💓 Heartbeat recibido:", data.data);
-        // Solo actualizar el mensaje de loading si existe
+      eventSourceRef.current.onopen = (event) => {
+        console.log("✅ Conexión SSE establecida con Railway", event);
         setMessages((prev) => {
-            const lastMessage = prev[prev.length - 1];
-            if (lastMessage && lastMessage.type === "loading") {
-                const newMessages = [...prev];
-                newMessages[newMessages.length - 1] = {
-                    ...lastMessage,
-                    text: data.data
-                };
-                return newMessages;
-            }
-            return prev;
+          const lastMessage = prev[prev.length - 1];
+          if (lastMessage && lastMessage.type === "loading") {
+            const newMessages = [...prev];
+            newMessages[newMessages.length - 1] = {
+              ...lastMessage,
+              text: "✅ Conectado - Generando tu receta..."
+            };
+            return newMessages;
+          }
+          return prev;
         });
-    } catch (error) {
-        console.log("💓 Heartbeat (sin parsear):", event.data);
-    }
-});
+      };
 
-      // Event listeners específicos
-      eventSourceRef.current.addEventListener("inicio", (event) => {
+      // 🔥 MANEJADOR GENÉRICO MEJORADO
+      eventSourceRef.current.onmessage = (event) => {
+        console.log("📨 Mensaje genérico Railway:", event.data);
         try {
           const data = JSON.parse(event.data);
-          console.log("🎬 Evento inicio:", data);
           handleStreamEvent(data);
         } catch (error) {
-          console.error("❌ Error parsing inicio event:", error);
+          console.log("📨 Datos raw recibidos:", event.data);
+          // Intentar manejar como texto plano
+          handleStreamEvent({
+            type: "receta",
+            linea: event.data,
+            progreso: progress + 5
+          });
         }
-      });
+      };
 
-      eventSourceRef.current.addEventListener("receta", (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log("📝 Evento receta:", data);
-          handleStreamEvent(data);
-        } catch (error) {
-          console.error("❌ Error parsing receta event:", error);
-        }
-      });
-
-      eventSourceRef.current.addEventListener("completo", (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log("✅ Evento completo:", data);
-          handleStreamEvent(data);
-        } catch (error) {
-          console.error("❌ Error parsing completo event:", error);
-        }
-      });
-
-      // Event listener para errores de servicio específicos
-      eventSourceRef.current.addEventListener("service_error", (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log("🔴 Evento service_error:", data);
-          handleServiceError(data);
-        } catch (error) {
-          console.error("❌ Error parsing service_error event:", error);
-          // Si hay error de parsing, usar datos raw
-          handleServiceError({ data: event.data || "Error de servicio" });
-        }
-      });
-
-      eventSourceRef.current.addEventListener("error", (event) => {
-        if (event.data) {
+      // 🔥 CONFIGURAR LISTENERS ESPECÍFICOS
+      const eventTypes = ['heartbeat', 'inicio', 'empezando', 'receta', 'completo', 'error', 'error_fatal'];
+      eventTypes.forEach(eventType => {
+        eventSourceRef.current.addEventListener(eventType, (event) => {
           try {
             const data = JSON.parse(event.data);
-            console.log("❌ Evento error (con datos):", data);
+            console.log(`🎯 Evento ${eventType}:`, data);
             handleStreamEvent(data);
-          } catch (parseError) {
-            console.error("❌ Error parsing error event:", parseError);
-            console.log("📄 Error raw data:", event.data);
-            handleStreamError("Error en la conexión: " + event.data);
+          } catch (error) {
+            console.error(`❌ Error parsing ${eventType}:`, error);
+            console.log("📄 Datos raw:", event.data);
           }
-        } else {
-          console.log("❌ Evento error (sin datos específicos)");
-          handleStreamError("Error de conexión con el servidor");
-        }
+        });
       });
 
       eventSourceRef.current.onerror = (error) => {
-        console.error("🚨 SSE Error:", error);
-        console.error("📊 EventSource readyState:", eventSourceRef.current?.readyState);
+        console.error("🚨 SSE Error en Railway:", error);
+        console.log("📊 ReadyState:", eventSourceRef.current?.readyState);
         
         if (eventSourceRef.current?.readyState === EventSource.CLOSED) {
-          handleStreamError("Conexión cerrada por el servidor");
+          handleStreamError("Conexión cerrada por el servidor Railway");
         } else {
-          handleStreamError("Error de conexión SSE");
+          handleStreamError("Error de conexión con Railway");
         }
       };
 
-      // 🔒 TIMEOUT DE SEGURIDAD (3 minutos)
+      // TIMEOUT 2.5 minutos (más generoso)
       setTimeout(() => {
         if (eventSourceRef.current && isStreaming) {
           console.log("⏰ Timeout de streaming - cerrando conexión");
           handleStreamError("Timeout: El proceso tardó demasiado");
         }
-      }, 180000); // 3 minutos
+      }, 150000);
 
     } catch (error) {
-      console.error("❌ Error al iniciar streaming:", error);
-      handleStreamError("No se pudo iniciar la conexión con el servidor");
+      console.error("❌ Error al iniciar streaming con Railway:", error);
+      handleStreamError("No se pudo conectar con el servidor Railway: " + error.message);
     }
   };
 
+  // 🔧 FUNCIÓN MEJORADA PARA MANEJAR EVENTOS DE STREAM
   const handleStreamEvent = (data) => {
-    console.log("📨 Procesando evento:", data);
+    console.log("📨 Procesando evento Railway:", data);
 
     switch (data.type) {
       case "inicio":
@@ -319,32 +264,46 @@ const ChatBotComponent = ({ currentUser }) => {
         );
         break;
 
+      case "heartbeat":
+        console.log("💓 Heartbeat recibido:", data.data);
+        // Solo actualizar si es un mensaje de loading
+        setMessages((prev) => {
+          const lastMessage = prev[prev.length - 1];
+          if (lastMessage && lastMessage.type === "loading") {
+            const newMessages = [...prev];
+            newMessages[newMessages.length - 1] = {
+              ...lastMessage,
+              text: data.data
+            };
+            return newMessages;
+          }
+          return prev;
+        });
+        break;
+
       case "receta":
         if (data.linea !== undefined && data.linea !== null) {
           console.log("📝 Procesando fragmento de receta:", {
             linea: data.linea,
-            progreso: data.progreso,
-            indice: data.indice,
-            total: data.total
+            progreso: data.progreso
           });
           handleRecipeLine(data);
-        } else {
-          console.warn("⚠️ Fragmento de receta vacío o undefined:", data);
         }
         break;
 
       case "completo":
-        console.log("✅ Streaming completado");
+        console.log("✅ Streaming completado en Railway");
         handleStreamComplete();
         break;
 
       case "error":
-        console.log("❌ Error en streaming");
-        handleStreamError("Error del servidor: " + (data.data || "Error desconocido"));
+      case "error_fatal":
+        console.log("❌ Error en streaming:", data.data);
+        handleStreamError(data.data || "Error del servidor");
         break;
 
       default:
-        console.log("❓ Tipo de evento no manejado:", data.type);
+        console.log("❓ Tipo de evento no manejado:", data.type, data);
     }
   };
 
@@ -362,7 +321,6 @@ const ChatBotComponent = ({ currentUser }) => {
     }
 
     setMessages((prev) => {
-      // Filtramos mensajes de 'loading' y 'streaming' antes de añadir el error
       const filteredMessages = prev.filter(
         (msg) => msg.type !== "loading" && msg.type !== "streaming"
       );
@@ -388,17 +346,14 @@ const ChatBotComponent = ({ currentUser }) => {
     }
 
     setMessages((prev) => {
-      // Buscar mensaje de streaming existente
       const existingStreamingIndex = prev.findIndex(
         (msg) => msg.type === "streaming"
       );
 
       if (existingStreamingIndex !== -1) {
-        // Actualizar mensaje existente - CONCATENAR FRAGMENTO
         const updatedMessages = [...prev];
         const existingMessage = updatedMessages[existingStreamingIndex];
 
-        // MODIFICACIÓN: Asegurar que concatenamos correctamente
         const newText = existingMessage.text + (linea || '');
 
         console.log("🔄 Actualizando mensaje streaming:", {
@@ -415,7 +370,6 @@ const ChatBotComponent = ({ currentUser }) => {
 
         return updatedMessages;
       } else {
-        // Crear nuevo mensaje de streaming
         console.log("🆕 Creando nuevo mensaje streaming con fragmento:", linea);
         
         const newMessage = {
@@ -426,7 +380,6 @@ const ChatBotComponent = ({ currentUser }) => {
           type: "streaming",
         };
 
-        // Remover mensaje de loading si existe
         const filteredMessages = prev.filter((msg) => msg.type !== "loading");
         return [...filteredMessages, newMessage];
       }
@@ -462,13 +415,11 @@ const ChatBotComponent = ({ currentUser }) => {
       eventSourceRef.current = null;
     }
 
-    // Solo agregar mensaje de error si no hay mensajes de streaming
     setMessages((prev) => {
       const hasStreaming = prev.some(msg => msg.type === "streaming");
       const hasLoading = prev.some(msg => msg.type === "loading");
       
       if (!hasStreaming && !hasLoading) {
-        // Solo mostrar error si no hay contenido
         const errorId = Date.now() + 4;
         return [
           ...prev,
@@ -481,7 +432,11 @@ const ChatBotComponent = ({ currentUser }) => {
           },
         ];
       }
-      return prev;
+      
+      // Si hay contenido de streaming, convertirlo a texto normal
+      return prev.map(msg => 
+        msg.type === "streaming" ? { ...msg, type: "text" } : msg
+      );
     });
   };
 
@@ -503,16 +458,12 @@ const ChatBotComponent = ({ currentUser }) => {
   };
 
   const formatMessageText = (text) => {
-    // Función auxiliar para convertir \n a <br /> de forma segura
     const processPlaintext = (t) => {
-      // Si el texto es nulo o vacío, devolver un fragmento vacío
       if (!t) return null; 
 
-      // Dividir el texto por \n y mapear a elementos, inyectando <br />
       return t.split('\n').map((part, i) => (
         <span key={i}>
           {part}
-          {/* Agrega <br /> solo si no es la última parte */}
           {i < t.split('\n').length - 1 && <br />}
         </span>
       ));
@@ -549,7 +500,6 @@ const ChatBotComponent = ({ currentUser }) => {
       } else if (line.trim() === "") {
         return <br key={index} />;
       } else if (line.match(/^\d+\. /)) {
-        // Las líneas de pasos (1., 2., 3.)
         const stepContent = line.replace(/^\d+\. /, '');
         return (
           <div key={index} className="message-step">
@@ -569,7 +519,6 @@ const ChatBotComponent = ({ currentUser }) => {
         );
       }
       
-      // Fallback final para cualquier línea de texto plano
       return <p key={index}>{processPlaintext(line)}</p>;
     });
   };
@@ -578,6 +527,33 @@ const ChatBotComponent = ({ currentUser }) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage(e);
+    }
+  };
+
+  // 🔥 BOTÓN DE PRUEBA TEMPORAL - Eliminar después de las pruebas
+  const testConnection = async () => {
+    try {
+      const backendUrl = getBackendUrl();
+      const response = await fetch(`${backendUrl}/api/chatbot/health`);
+      const data = await response.json();
+      console.log("✅ Health Check:", data);
+      
+      setMessages(prev => [...prev, {
+        id: Date.now(),
+        text: `✅ Health Check: ${data.status} - ${data.service}`,
+        isBot: true,
+        timestamp: new Date(),
+        type: "text",
+      }]);
+    } catch (error) {
+      console.error("❌ Health Check failed:", error);
+      setMessages(prev => [...prev, {
+        id: Date.now(),
+        text: `❌ Health Check failed: ${error.message}`,
+        isBot: true,
+        timestamp: new Date(),
+        type: "text",
+      }]);
     }
   };
 
@@ -627,6 +603,15 @@ const ChatBotComponent = ({ currentUser }) => {
               </div>
             </div>
             <div className="chatbot-actions">
+              {/* 🔥 BOTÓN DE PRUEBA TEMPORAL - Eliminar después */}
+              <button
+                className="btn-chat-action test-btn"
+                onClick={testConnection}
+                title="Probar conexión"
+                style={{ fontSize: '12px', padding: '4px 8px' }}
+              >
+                Test
+              </button>
               <button
                 className="btn-chat-action"
                 onClick={toggleExpand}
@@ -682,7 +667,6 @@ const ChatBotComponent = ({ currentUser }) => {
                           dangerouslySetInnerHTML={{ __html: message.text }}
                         />
                       ) : (
-                        // Para todos los demás mensajes (recetas, texto de usuario, etc.), usamos el formateador seguro
                         formatMessageText(message.text)
                       )}
 
@@ -772,8 +756,7 @@ const ChatBotComponent = ({ currentUser }) => {
                   </small>
                 ) : (
                   <small>
-                    Presiona **Enter** para enviar, **Shift+Enter** para nueva
-                    línea
+                    Presiona **Enter** para enviar, **Shift+Enter** para nueva línea
                   </small>
                 )}
               </div>
