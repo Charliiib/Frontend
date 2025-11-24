@@ -156,6 +156,9 @@ const ChatBotComponent = ({ currentUser }) => {
     };
     setMessages((prev) => [...prev, loadingMessage]);
 
+    let reconnectAttempts = 0;
+  const maxReconnectAttempts = 1;
+
     try {
       const encodedMessage = encodeURIComponent(mensajeUsuario);
       
@@ -191,6 +194,28 @@ const ChatBotComponent = ({ currentUser }) => {
           }
         }
       };
+
+      eventSourceRef.current.addEventListener("heartbeat", (event) => {
+    try {
+        const data = JSON.parse(event.data);
+        console.log("💓 Heartbeat recibido:", data.data);
+        // Solo actualizar el mensaje de loading si existe
+        setMessages((prev) => {
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage && lastMessage.type === "loading") {
+                const newMessages = [...prev];
+                newMessages[newMessages.length - 1] = {
+                    ...lastMessage,
+                    text: data.data
+                };
+                return newMessages;
+            }
+            return prev;
+        });
+    } catch (error) {
+        console.log("💓 Heartbeat (sin parsear):", event.data);
+    }
+});
 
       // Event listeners específicos
       eventSourceRef.current.addEventListener("inicio", (event) => {
