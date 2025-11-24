@@ -132,13 +132,18 @@ const ChatBotComponent = ({ currentUser }) => {
 
       console.log('🔗 URL:', url);
 
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'text/event-stream',
-        'Authorization': `Bearer ${token}`,
-      },
-    });
+          const headers = {
+            'Accept': 'text/event-stream',
+          };
+
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+          }
+
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: headers,
+          });
 
       console.log('📡 Response status:', response.status, response.statusText);
 
