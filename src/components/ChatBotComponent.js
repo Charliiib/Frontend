@@ -146,7 +146,7 @@ const ChatBotComponent = ({ currentUser }) => {
     await generarRecetaConStreaming(currentMessage);
   };
 
-  // 🔥 FUNCIÓN STREAMING MEJORADA - MANEJO ROBUSTO DE SSE
+// 🔥 FUNCIÓN STREAMING CORREGIDA
   const generarRecetaConStreaming = async (mensajeUsuario) => {
     setIsLoading(true);
     setIsStreaming(true);
@@ -164,24 +164,40 @@ const ChatBotComponent = ({ currentUser }) => {
     try {
       const encodedMessage = encodeURIComponent(mensajeUsuario);
       const backendUrl = getBackendUrl();
-      const url = `${backendUrl}/api/chatbot/consulta-stream?mensaje=${encodedMessage}`;
       
-      console.log("🌐 Conectando SSE:", url);
+      // 👇 CAMBIO CLAVE: Recuperar token y añadirlo a la URL
+      const token = localStorage.getItem('token'); // O donde guardes tu JWT
+      let url = `${backendUrl}/api/chatbot/consulta-stream?mensaje=${encodedMessage}`;
+      
+      if (token) {
+          url += `&token=${encodeURIComponent(token)}`;
+      }
+      
+      console.log("🌐 Conectando SSE a:", url);
 
-      // Cerrar conexión anterior
+      // Cerrar conexión anterior si existe
       if (eventSourceRef.current) {
-        console.log("🔒 Cerrando conexión SSE anterior");
         eventSourceRef.current.close();
       }
-
-      // Limpiar timeout de reconexión anterior
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
 
+      // 👇 IMPORTANTE: withCredentials debe ser false si el token va en URL
+      // y no usas cookies de sesión HttpOnly.
       eventSourceRef.current = new EventSource(url, {
-        withCredentials: false
+        withCredentials: false 
       });
+
+      // ... El resto de tus manejadores (onopen, onmessage) se quedan igual ...
+      
+      eventSourceRef.current.onopen = (event) => {
+        console.log("✅ Conexión SSE ABIERTA");
+        // ... tu lógica existente ...
+      };
+
+      // ... resto del código ...
+
 
       eventSourceRef.current.onopen = (event) => {
         console.log("✅ Conexión SSE establecida", event);
