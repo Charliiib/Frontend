@@ -136,10 +136,6 @@ const ChatBotComponent = ({ currentUser }) => {
             'Accept': 'text/event-stream',
           };
 
-          if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-          }
-
           const response = await fetch(url, {
             method: 'GET',
             headers: headers,
