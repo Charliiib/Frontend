@@ -108,7 +108,7 @@ const ListasComponent = ({ currentUser }) => {
         nombreLista: nuevaListaNombre,
       };
 
-      await axios.post("${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/listas", nuevaLista, {
+      await axios.post(`${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/listas`, nuevaLista, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
