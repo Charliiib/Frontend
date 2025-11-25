@@ -32,6 +32,7 @@ const ResultadosSucursalesFavoritasModal = ({
   const [error, setError] = useState(null);
   const [sucursalMasBarata, setSucursalMasBarata] = useState(null);
   const [preciosPromedio, setPreciosPromedio] = useState({});
+  const [calculosCompletos, setCalculosCompletos] = useState(false);
 
   useEffect(() => {
     if (show && lista) {
@@ -40,17 +41,20 @@ const ResultadosSucursalesFavoritasModal = ({
   }, [show, lista]);
 
   useEffect(() => {
-    if (Object.keys(resultados).length > 0) {
-      calcularPreciosPromedio();
-      calcularSucursalMasBarata();
+    if (Object.keys(resultados).length > 0 && !calculosCompletos) {
+      // Calcular precios promedio primero, luego la sucursal más barata
+      const nuevosPromedios = calcularPreciosPromedio();
+      setPreciosPromedio(nuevosPromedios);
+      calcularSucursalMasBarata(nuevosPromedios);
+      setCalculosCompletos(true);
     }
-  }, [resultados]);
+  }, [resultados, calculosCompletos]);
 
-  // Calcular precios promedio para productos sin stock
+  // Calcular precios promedio para productos sin stock (ahora retorna los promedios)
   const calcularPreciosPromedio = () => {
     const promedios = {};
     
-    if (!lista || !lista.productos) return;
+    if (!lista || !lista.productos) return promedios;
 
     // Para cada producto en la lista
     lista.productos.forEach(producto => {
@@ -75,13 +79,14 @@ const ResultadosSucursalesFavoritasModal = ({
       }
     });
 
-    setPreciosPromedio(promedios);
+    return promedios;
   };
 
   const cargarSucursalesFavoritas = async () => {
     if (!currentUser) return;
 
     setLoading(true);
+    setCalculosCompletos(false); // Resetear cálculos
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
@@ -111,6 +116,7 @@ const ResultadosSucursalesFavoritasModal = ({
 
     setLoading(true);
     setError(null);
+    setCalculosCompletos(false); // Resetear cálculos
 
     try {
       const resultadosPorSucursal = {};
@@ -177,35 +183,37 @@ const ResultadosSucursalesFavoritasModal = ({
   };
 
   // Calcular total incluyendo precios promedio para productos sin stock
-  const calcularTotalSucursal = (productos) => {
-    return productos.reduce((total, item) => {
+  const calcularTotalSucursal = (productos, promedios = preciosPromedio) => {
+    const total = productos.reduce((total, item) => {
       if (item.precio) {
         return total + item.precio;
-      } else if (preciosPromedio[item.producto.idProducto]) {
+      } else if (promedios[item.producto.idProducto]) {
         // Usar precio promedio si no hay precio real
-        return total + preciosPromedio[item.producto.idProducto];
+        return total + promedios[item.producto.idProducto];
       }
       return total;
     }, 0);
+
+    return total;
   };
 
   const productosConPrecioReal = (productos) => {
     return productos.filter((item) => item.precio && item.esPrecioReal).length;
   };
 
-  const productosConPrecioPromedio = (productos) => {
+  const productosConPrecioPromedio = (productos, promedios = preciosPromedio) => {
     return productos.filter((item) => 
-      !item.precio && preciosPromedio[item.producto.idProducto]
+      !item.precio && promedios[item.producto.idProducto]
     ).length;
   };
 
-  const productosSinPrecio = (productos) => {
+  const productosSinPrecio = (productos, promedios = preciosPromedio) => {
     return productos.filter((item) => 
-      !item.precio && !preciosPromedio[item.producto.idProducto]
+      !item.precio && !promedios[item.producto.idProducto]
     ).length;
   };
 
-  const calcularSucursalMasBarata = () => {
+  const calcularSucursalMasBarata = (promedios = preciosPromedio) => {
     if (Object.keys(resultados).length === 0) {
       setSucursalMasBarata(null);
       return;
@@ -214,17 +222,27 @@ const ResultadosSucursalesFavoritasModal = ({
     let menorTotal = Infinity;
     let sucursalMasBarataId = null;
 
+    console.log("=== CALCULANDO SUCURSAL MÁS BARATA (FINAL) ===");
+
     Object.values(resultados).forEach(resultado => {
       if (!resultado.loading) {
-        const total = calcularTotalSucursal(resultado.productos);
-        const conPrecio = productosConPrecioReal(resultado.productos) + productosConPrecioPromedio(resultado.productos);
-        if (conPrecio > 0 && total < menorTotal) {
+        const total = calcularTotalSucursal(resultado.productos, promedios);
+        const productosConDatos = productosConPrecioReal(resultado.productos) + productosConPrecioPromedio(resultado.productos, promedios);
+        
+        console.log(`Sucursal: ${resultado.sucursal.sucursalNombre}`);
+        console.log(`- Total: $${total}`);
+        console.log(`- Productos con datos: ${productosConDatos}`);
+
+        // Considerar solo sucursales que tienen al menos 1 producto con datos
+        if (productosConDatos > 0 && total < menorTotal) {
           menorTotal = total;
           sucursalMasBarataId = resultado.sucursal.idSucursal;
+          console.log(`- NUEVA SUCURSAL MÁS BARATA: ${resultado.sucursal.sucursalNombre} - $${total}`);
         }
       }
     });
 
+    console.log(`Sucursal más barata final: ${sucursalMasBarataId}`);
     setSucursalMasBarata(sucursalMasBarataId);
   };
 
