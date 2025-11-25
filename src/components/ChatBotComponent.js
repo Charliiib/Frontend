@@ -196,8 +196,6 @@ const ChatBotComponent = ({ currentUser }) => {
         // ... tu lógica existente ...
       };
 
-      // ... resto del código ...
-
 
       eventSourceRef.current.onopen = (event) => {
         console.log("✅ Conexión SSE establecida", event);
