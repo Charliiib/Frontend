@@ -596,15 +596,6 @@ const ChatBotComponent = ({ currentUser }) => {
               </div>
             </div>
             <div className="chatbot-actions">
-              {/* 🔥 BOTÓN DE PRUEBA TEMPORAL - Eliminar después */}
-              <button
-                className="btn-chat-action test-btn"
-                onClick={testConnection}
-                title="Probar conexión"
-                style={{ fontSize: '12px', padding: '4px 8px' }}
-              >
-                Test
-              </button>
               <button
                 className="btn-chat-action"
                 onClick={toggleExpand}
