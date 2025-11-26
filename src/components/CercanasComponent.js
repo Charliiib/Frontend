@@ -20,11 +20,13 @@ export const CercanasComponent = ({ userLocation }) => {
           params: {
             lat: userLocation.lat,
             lng: userLocation.lng,
-            limit: 10
+            limit: 100 // Aumentamos el límite para obtener más resultados y luego filtrar
           }
         });
         
-        setSucursalesCercanas(response.data);
+        // Filtrar sucursales para mantener solo la más cercana de cada comercio/bandera
+        const sucursalesUnicas = filtrarSucursalesUnicas(response.data);
+        setSucursalesCercanas(sucursalesUnicas);
       } catch (err) {
         console.error('Error fetching nearby branches:', err);
         setError('Error al cargar sucursales cercanas');
@@ -36,13 +38,31 @@ export const CercanasComponent = ({ userLocation }) => {
     fetchSucursalesCercanas();
   }, [userLocation]);
 
+  // Función para filtrar sucursales y mantener solo la más cercana de cada comercio
+  const filtrarSucursalesUnicas = (sucursales) => {
+    const comerciosUnicos = {};
+    
+    sucursales.forEach(sucursal => {
+      const clave = `${sucursal.idComercio}-${sucursal.idBandera}`;
+      
+      // Si no tenemos este comercio/bandera, o si esta sucursal es más cercana que la que tenemos
+      if (!comerciosUnicos[clave] || sucursal.distancia < comerciosUnicos[clave].distancia) {
+        comerciosUnicos[clave] = sucursal;
+      }
+    });
+    
+    // Convertir el objeto de vuelta a array y ordenar por distancia
+    return Object.values(comerciosUnicos)
+      .sort((a, b) => a.distancia - b.distancia)
+      .slice(0, 10); // Mostramos máximo 10 comercios únicos
+  };
+
   const formatDistance = (distance) => {
     if (distance < 1) return `${Math.round(distance * 1000)} m`;
     return `${distance.toFixed(1)} km`;
   };
 
   const openInMaps = (lat, lng) => {
-    // CORRECCIÓN: Uso de la URL estándar de Google Maps
     window.open(`https://maps.google.com/?q=${lat},${lng}`, '_blank');
   };
 
@@ -78,14 +98,12 @@ export const CercanasComponent = ({ userLocation }) => {
         <ul className="list-group list-group-flush">
           {sucursalesCercanas.length > 0 ? (
             sucursalesCercanas.map((sucursal, index) => (
-              // NUEVO DISEÑO DE ELEMENTO DE LISTA
               <li 
                 key={index} 
                 className="list-group-item p-3 bg-white border rounded-3 mb-2 shadow-sm list-card-hover"
-                style={{ borderLeft: "5px solid var(--bs-secondary)" }} // Estilo visual
+                style={{ borderLeft: "5px solid var(--bs-secondary)" }}
               >
                 <div className="d-flex align-items-center">
-                  {/* Izquierda: Imagen del comercio */}
                   <div className="me-3 flex-shrink-0">
                     <img 
                       src={getComercioImageUrl(sucursal)} 
@@ -103,7 +121,6 @@ export const CercanasComponent = ({ userLocation }) => {
                     />
                   </div>
                   
-                  {/* Centro: Info de Sucursal/Comercio */}
                   <div className="flex-grow-1 overflow-hidden">
                     <h6 className="mb-1 fw-bold text-dark text-truncate" title={sucursal.comercioBanderaNombre}>
                       {sucursal.comercioBanderaNombre}
@@ -113,7 +130,6 @@ export const CercanasComponent = ({ userLocation }) => {
                     </small>
                   </div>
                   
-                  {/* Derecha: Distancia y Botón de Mapa */}
                   <div className="text-end flex-shrink-0 ms-3">
                     <span className="d-block fw-bold text-primary">
                       {formatDistance(sucursal.distancia)}
