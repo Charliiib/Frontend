@@ -59,6 +59,9 @@ const UbicacionComponent = ({
   const [location, setLocation] = useState({
     address: "Habilite la ubicación para calcular la distancia",
     direccionCompleta: "",
+    calle: "",
+    barrio: "",
+    localidad: "",
     coords: null,
     loading: false,
     error: null,
@@ -73,9 +76,92 @@ const UbicacionComponent = ({
   const [loadingDirecciones, setLoadingDirecciones] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Funciones de utilidad (MOCKs o Lógica Geográfica)
+  // Servicio de geocodificación inversa usando Nominatim (OpenStreetMap)
   const getAddressFromCoords = async (lat, lng) => {
-    return "Dirección completa obtenida del API";
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&accept-language=es`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Error en la respuesta del servidor');
+      }
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      const address = data.address;
+      
+      // Construir dirección completa
+      let direccionCompleta = "";
+      let calle = "";
+      let barrio = "";
+      let localidad = "";
+      
+      // Obtener calle
+      if (address.road) {
+        calle = address.road;
+        if (address.house_number) {
+          calle += ` ${address.house_number}`;
+        }
+        direccionCompleta += calle;
+      }
+      
+      // Obtener barrio
+      if (address.suburb) {
+        barrio = address.suburb;
+      } else if (address.neighbourhood) {
+        barrio = address.neighbourhood;
+      } else if (address.quarter) {
+        barrio = address.quarter;
+      }
+      
+      // Obtener localidad
+      if (address.city) {
+        localidad = address.city;
+      } else if (address.town) {
+        localidad = address.town;
+      } else if (address.village) {
+        localidad = address.village;
+      } else if (address.municipality) {
+        localidad = address.municipality;
+      }
+      
+      // Construir dirección completa con barrio
+      if (barrio) {
+        if (direccionCompleta) direccionCompleta += ", ";
+        direccionCompleta += barrio;
+      }
+      
+      if (localidad) {
+        if (direccionCompleta) direccionCompleta += ", ";
+        direccionCompleta += localidad;
+      }
+      
+      // Si no hay dirección específica, usar el display name
+      if (!direccionCompleta && data.display_name) {
+        direccionCompleta = data.display_name.split(',')[0]; // Tomar solo la primera parte
+      }
+      
+      return {
+        direccionCompleta: direccionCompleta || "Dirección no disponible",
+        calle: calle || "Calle no disponible",
+        barrio: barrio || "Barrio no disponible",
+        localidad: localidad || "Localidad no disponible"
+      };
+      
+    } catch (error) {
+      console.error("Error en geocodificación inversa:", error);
+      return {
+        direccionCompleta: "Error al obtener dirección",
+        calle: "Error al obtener calle",
+        barrio: "Error al obtener barrio",
+        localidad: "Error al obtener localidad"
+      };
+    }
   };
 
   const saveDireccionToDatabase = async (newLocation, nombrePersonalizado) => {
@@ -110,12 +196,18 @@ const UbicacionComponent = ({
           if (direccionesData && direccionesData.length > 0 && !location.coords) {
             const ultimaDireccion = direccionesData[0];
             
-            // Re-fetch de dirección completa (simulado/asumido)
-            const direccionCompleta = ultimaDireccion.direccionCompleta || "Dirección cargada de guardados";
+            // Obtener dirección completa con geocodificación
+            const direccionInfo = await getAddressFromCoords(
+              parseFloat(ultimaDireccion.latitud),
+              parseFloat(ultimaDireccion.longitud)
+            );
 
             const newLocation = {
               address: ultimaDireccion.nombreDireccion || "Ubicación guardada",
-              direccionCompleta: direccionCompleta,
+              direccionCompleta: direccionInfo.direccionCompleta,
+              calle: direccionInfo.calle,
+              barrio: direccionInfo.barrio,
+              localidad: direccionInfo.localidad,
               coords: {
                 lat: parseFloat(ultimaDireccion.latitud),
                 lng: parseFloat(ultimaDireccion.longitud),
@@ -185,6 +277,9 @@ const UbicacionComponent = ({
         const resetLocation = {
           address: "Habilite la ubicación para calcular la distancia",
           direccionCompleta: "",
+          calle: "",
+          barrio: "",
+          localidad: "",
           coords: null,
           loading: false,
           error: null
@@ -222,12 +317,15 @@ const UbicacionComponent = ({
         longitude = position.coords.longitude;
       }
 
-      const direccionCompleta = await getAddressFromCoords(latitude, longitude);
-      const address = nombrePersonalizado || direccionCompleta;
+      const direccionInfo = await getAddressFromCoords(latitude, longitude);
+      const address = nombrePersonalizado || direccionInfo.direccionCompleta;
 
       const newLocation = {
         address: address,
-        direccionCompleta: direccionCompleta,
+        direccionCompleta: direccionInfo.direccionCompleta,
+        calle: direccionInfo.calle,
+        barrio: direccionInfo.barrio,
+        localidad: direccionInfo.localidad,
         coords: { lat: latitude, lng: longitude },
         loading: false,
         error: null,
@@ -281,13 +379,16 @@ const UbicacionComponent = ({
     }
     
     try {
-      const direccionCompleta = await getAddressFromCoords(
+      const direccionInfo = await getAddressFromCoords(
         parseFloat(direccion.latitud),
         parseFloat(direccion.longitud)
       );
       const newLocation = {
         address: direccion.nombreDireccion,
-        direccionCompleta: direccionCompleta,
+        direccionCompleta: direccionInfo.direccionCompleta,
+        calle: direccionInfo.calle,
+        barrio: direccionInfo.barrio,
+        localidad: direccionInfo.localidad,
         coords: {
           lat: parseFloat(direccion.latitud),
           lng: parseFloat(direccion.longitud),
@@ -303,6 +404,9 @@ const UbicacionComponent = ({
       const newLocation = {
         address: direccion.nombreDireccion,
         direccionCompleta: direccion.direccionCompleta || "Dirección no disponible",
+        calle: "Información no disponible",
+        barrio: "Información no disponible",
+        localidad: "Información no disponible",
         coords: {
           lat: parseFloat(direccion.latitud),
           lng: parseFloat(direccion.longitud),
@@ -340,6 +444,26 @@ const UbicacionComponent = ({
                     <small className="text-muted d-block text-truncate" title={location.address}>
                         {location.address}
                     </small>
+                    {/* Nueva sección para mostrar calle, barrio y localidad */}
+                    {location.coords && (
+                      <div className="mt-2 small">
+                        {location.calle && location.calle !== "Calle no disponible" && (
+                          <div className="text-dark">
+                            <strong>Calle:</strong> {location.calle}
+                          </div>
+                        )}
+                        {location.barrio && location.barrio !== "Barrio no disponible" && (
+                          <div className="text-dark">
+                            <strong>Barrio:</strong> {location.barrio}
+                          </div>
+                        )}
+                        {location.localidad && location.localidad !== "Localidad no disponible" && (
+                          <div className="text-dark">
+                            <strong>Localidad:</strong> {location.localidad}
+                          </div>
+                        )}
+                      </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -375,12 +499,10 @@ const UbicacionComponent = ({
                     <div
                       key={direccion.idDireccionUsuario}
                       onClick={() => selectDireccionGuardada(direccion)}
-                      // Eliminamos bg-primary y solo dejamos text-white para el padre
                       className={`list-group-item list-group-item-action p-3 rounded-3 mb-2 list-card-hover ${isActive ? 'active text-black' : ''}`}
                       style={{ 
                         borderLeft: isActive ? "5px solid var(--bs-primary)" : "1px solid #e9ecef", 
                         cursor: 'pointer',
-                        // CORRECCIÓN FINAL: Forzamos el color de fondo y texto si está activo
                         backgroundColor: isActive ? "var(--bs-secondary)" : "", 
                         color: isActive ? "white" : "",
                       }}
@@ -438,8 +560,8 @@ const UbicacionComponent = ({
               </>
             ) : location.coords ? (
               <>
-                <FaLocationArrow className="me-1" />
-                Cambiar ubicación
+                <FaMapMarkerAlt className="me-1" />
+                Agregar ubicación
               </>
             ) : (
               <>
@@ -464,7 +586,7 @@ const UbicacionComponent = ({
         <Modal.Header closeButton className="border-0 pb-0">
           <Modal.Title className="fw-bold text-primary"> 
             <FaMapMarkerAlt className="me-2" /> 
-            {location.coords ? "Cambiar Ubicación" : "Mejor experiencia con ubicación"} 
+            {location.coords ? "Agregar Ubicación" : "Mejor experiencia con ubicación"} 
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="pt-0">
