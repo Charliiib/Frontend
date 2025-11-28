@@ -154,7 +154,7 @@ const ChatBotComponent = ({ currentUser }) => {
 
     const loadingMessage = {
       id: Date.now() + 2,
-      text: "🤖 Conectando con servidor...",
+      text: "🤖 Analizando tu consulta",
       isBot: true,
       timestamp: new Date(),
       type: "loading",
@@ -205,7 +205,7 @@ const ChatBotComponent = ({ currentUser }) => {
             const newMessages = [...prev];
             newMessages[newMessages.length - 1] = {
               ...lastMessage,
-              text: "✅ Conectado - Generando tu receta..."
+              text: "🤖 Analizando tu consulta"
             };
             return newMessages;
           }
